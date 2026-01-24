@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { CartItem } from './CartItem';
-import { PaymentModal } from './PaymentModal';
 import { HeldCartsModal } from './HeldCartsModal';
 import { useCartStore, useAuthStore, useHeldCartsStore, useLanguageStore } from '../../lib/store';
 import { formatUSD, formatKHR, usdToKHR } from '../../lib/utils/currency';
-import { saveHeldCart, getHeldCarts, type HeldCart } from '../../lib/client/db';
+import { saveHeldCart, getHeldCarts, saveLocalInvoice, generateInvoiceNo, getOrCreateDeviceId, type HeldCart, type LocalInvoice, type LocalInvoiceItem } from '../../lib/client/db';
+import { syncToServer } from '../../lib/client/sync';
 import { t } from '../../i18n';
+import { Button } from '../ui/Button';
 
 interface CartProps {
   onClose?: () => void;
@@ -14,14 +15,34 @@ interface CartProps {
 
 export function Cart({ onClose, showCloseButton }: CartProps) {
   const { items, getSubtotal, clearCart, setCart } = useCartStore();
-  const { exchangeRateKHR } = useAuthStore();
+  const { user, exchangeRateKHR } = useAuthStore();
   const { setHeldCarts, addHeldCart } = useHeldCartsStore();
   const { language } = useLanguageStore();
   const [showPayment, setShowPayment] = useState(false);
   const [showHeldCarts, setShowHeldCarts] = useState(false);
   
+  // Payment states
+  const [paidAmountKHR, setPaidAmountKHR] = useState('');
+  const [error, setError] = useState('');
+  const [processing, setProcessing] = useState(false);
+  const [completedInvoice, setCompletedInvoice] = useState<LocalInvoice | null>(null);
+  
   const subtotal = getSubtotal();
-  const subtotalKHR = usdToKHR(subtotal, exchangeRateKHR);
+  const totalKHR = usdToKHR(subtotal, exchangeRateKHR);
+  const paidKHR = parseInt(paidAmountKHR, 10) || 0;
+  const paidUSDcents = Math.round((paidKHR / exchangeRateKHR) * 100);
+  const changeKHR = Math.max(0, paidKHR - totalKHR);
+  const changeUSDcents = Math.round((changeKHR / exchangeRateKHR) * 100);
+  
+  // Quick amounts in KHR
+  const quickAmountsKHR = [
+    { label: t(language, 'payment.exactAmount'), value: totalKHR },
+    { label: '៛5,000', value: 5000 },
+    { label: '៛10,000', value: 10000 },
+    { label: '៛20,000', value: 20000 },
+    { label: '៛50,000', value: 50000 },
+    { label: '៛100,000', value: 100000 },
+  ];
   
   const handleHold = async () => {
     if (items.length === 0) return;
@@ -48,6 +69,270 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
     setShowHeldCarts(false);
   };
   
+  const handleStartPayment = () => {
+    setPaidAmountKHR('');
+    setError('');
+    setCompletedInvoice(null);
+    setShowPayment(true);
+  };
+  
+  const handleCancelPayment = () => {
+    setShowPayment(false);
+    setPaidAmountKHR('');
+    setError('');
+  };
+  
+  const handleQuickAmountKHR = (amount: number) => {
+    setPaidAmountKHR(amount.toString());
+    setError('');
+  };
+  
+  const handleCompletePayment = async () => {
+    if (paidKHR < totalKHR) {
+      setError(t(language, 'payment.insufficientPayment'));
+      return;
+    }
+    
+    setProcessing(true);
+    setError('');
+    
+    try {
+      const deviceId = await getOrCreateDeviceId();
+      const invoiceNo = await generateInvoiceNo();
+      const invoiceId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      
+      const invoice: LocalInvoice = {
+        id: invoiceId,
+        invoiceNo,
+        cashierId: user?.id || 'unknown',
+        cashierName: user?.username || 'Unknown',
+        deviceId,
+        subtotalUSDcents: subtotal,
+        totalUSDcents: subtotal,
+        paidUSDcents,
+        changeUSDcents,
+        exchangeRateKHR,
+        subtotalKHR: totalKHR,
+        totalKHR,
+        paidKHR,
+        changeKHR,
+        createdAt: now,
+        syncStatus: 'pending',
+      };
+      
+      const invoiceItems: LocalInvoiceItem[] = items.map((item) => ({
+        id: crypto.randomUUID(),
+        invoiceId,
+        productId: item.productId,
+        nameSnapshot: `${item.nameEn} / ${item.nameKm}`,
+        priceUSDcentsSnapshot: item.priceUSDcents,
+        qty: item.qty,
+        lineTotalUSDcents: item.priceUSDcents * item.qty,
+        lineTotalKHR: usdToKHR(item.priceUSDcents * item.qty, exchangeRateKHR),
+      }));
+      
+      await saveLocalInvoice(invoice, invoiceItems);
+      clearCart();
+      
+      if (navigator.onLine) {
+        syncToServer();
+      }
+      
+      setCompletedInvoice(invoice);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Payment failed');
+    } finally {
+      setProcessing(false);
+    }
+  };
+  
+  const handleNewSale = () => {
+    setCompletedInvoice(null);
+    setShowPayment(false);
+    setPaidAmountKHR('');
+  };
+  
+  const handleViewInvoice = () => {
+    if (completedInvoice) {
+      window.open(`/invoice/${completedInvoice.id}`, '_blank');
+    }
+  };
+  
+  const handlePrintInvoice = () => {
+    if (completedInvoice) {
+      const printWindow = window.open(`/invoice/${completedInvoice.id}`, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => {
+          setTimeout(() => printWindow.print(), 500);
+        };
+      }
+    }
+  };
+  
+  // Payment Success Screen (inline in cart area)
+  if (completedInvoice) {
+    return (
+      <div className="flex flex-col h-full glass-panel">
+        <div className="flex-1 flex flex-col items-center justify-center p-6">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">{t(language, 'common.success')}!</h3>
+          <p className="text-gray-600 mb-6">{t(language, 'invoice.thankYou')}</p>
+          
+          {/* Invoice Summary */}
+          <div className="w-full bg-gray-50 rounded-2xl p-4 mb-6">
+            <p className="text-sm text-gray-500 mb-1">{t(language, 'invoice.invoiceNo')}</p>
+            <p className="font-mono font-bold text-lg mb-4">{completedInvoice.invoiceNo}</p>
+            
+            {/* Total & Change in two columns */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-primary-500 rounded-xl p-3 text-white text-center">
+                <p className="text-xs text-primary-100">{t(language, 'invoice.total')}</p>
+                <p className="text-xl font-bold">{formatKHR(completedInvoice.totalKHR)}</p>
+              </div>
+              <div className="bg-blue-500 rounded-xl p-3 text-white text-center">
+                <p className="text-xs text-blue-100">{t(language, 'invoice.change')}</p>
+                <p className="text-xl font-bold">{formatKHR(completedInvoice.changeKHR)}</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Action buttons */}
+          <div className="w-full space-y-3">
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={handleViewInvoice} className="flex-1">
+                {language === 'km' ? 'មើល' : 'View'}
+              </Button>
+              <Button variant="secondary" onClick={handlePrintInvoice} className="flex-1">
+                {t(language, 'invoice.print')}
+              </Button>
+            </div>
+            <Button variant="success" onClick={handleNewSale} className="w-full btn-lg">
+              {t(language, 'invoice.newSale')}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Payment Screen (inline in cart area)
+  if (showPayment) {
+    return (
+      <div className="flex flex-col h-full glass-panel">
+        {/* Header */}
+        <div className="p-4 border-b border-white/30">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900">{t(language, 'payment.title')}</h2>
+            <button
+              onClick={handleCancelPayment}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-white/50 rounded-xl transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        {/* Payment Content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Total Due & Change in two columns */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl p-4 text-white shadow-lg">
+              <p className="text-xs font-medium text-primary-100 uppercase tracking-wide">
+                {language === 'km' ? 'សរុបត្រូវបង់' : 'Total Due'}
+              </p>
+              <p className="text-2xl font-bold mt-1">{formatKHR(totalKHR)}</p>
+              <p className="text-sm text-primary-100">{formatUSD(subtotal)}</p>
+            </div>
+            
+            {/* Change box - using blue */}
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg">
+              <p className="text-xs font-medium text-blue-100 uppercase tracking-wide">
+                {language === 'km' ? 'ប្រាក់អាប់' : 'Change'}
+              </p>
+              <p className="text-2xl font-bold mt-1">{formatKHR(changeKHR)}</p>
+              <p className="text-sm text-blue-100">{formatUSD(changeUSDcents)}</p>
+            </div>
+          </div>
+          
+          {/* Cash received input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t(language, 'payment.cashReceived')} (៛)
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-500">៛</span>
+              <input
+                type="number"
+                value={paidAmountKHR}
+                onChange={(e) => {
+                  setPaidAmountKHR(e.target.value);
+                  setError('');
+                }}
+                className="input input-lg pl-10 text-2xl font-bold text-center w-full"
+                placeholder="0"
+                step="100"
+                min="0"
+                autoFocus
+              />
+            </div>
+            {paidAmountKHR && (
+              <p className="mt-1 text-center text-gray-500 text-sm">≈ {formatUSD(paidUSDcents)}</p>
+            )}
+          </div>
+          
+          {/* Quick amounts */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">{t(language, 'payment.quickAmounts')}</p>
+            <div className="grid grid-cols-3 gap-2">
+              {quickAmountsKHR.map((qa) => (
+                <button
+                  key={qa.label}
+                  onClick={() => handleQuickAmountKHR(qa.value)}
+                  className="btn btn-outline py-2.5 text-sm"
+                >
+                  {qa.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* Error message */}
+          {error && (
+            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl text-sm">
+              {error}
+            </div>
+          )}
+        </div>
+        
+        {/* Footer */}
+        <div className="border-t border-white/30 p-4 space-y-3 bg-white/30 backdrop-blur-xl safe-bottom">
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={handleCancelPayment} className="flex-1">
+              {t(language, 'payment.cancel')}
+            </Button>
+            <Button
+              variant="success"
+              onClick={handleCompletePayment}
+              loading={processing}
+              disabled={!paidAmountKHR || paidKHR < totalKHR}
+              className="flex-1"
+            >
+              {t(language, 'payment.completePayment')}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Regular Cart View
   return (
     <div className="flex flex-col h-full glass-panel">
       {/* Header */}
@@ -99,23 +384,30 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
       
       {/* Footer with totals and actions */}
       <div className="border-t border-white/30 p-5 space-y-4 bg-white/30 backdrop-blur-xl safe-bottom">
-        {/* Subtotal - KHR PRIMARY */}
-        <div className="flex items-center justify-between">
-          <span className="text-gray-600">{t(language, 'pos.subtotal')}</span>
-          <div className="text-right">
-            <span className="text-xl font-bold text-gray-900">{formatKHR(subtotalKHR)}</span>
-            <span className="block text-sm text-gray-500">{formatUSD(subtotal)}</span>
+        {/* Total Due & Items Count - Two column boxes */}
+        {items.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl p-4 text-white shadow-lg shadow-primary-500/20">
+              <p className="text-xs font-medium text-primary-100 uppercase tracking-wide">
+                {language === 'km' ? 'សរុបត្រូវបង់' : 'Total Due'}
+              </p>
+              <p className="text-2xl font-bold mt-1">{formatKHR(totalKHR)}</p>
+              <p className="text-sm text-primary-100">{formatUSD(subtotal)}</p>
+            </div>
+            
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg shadow-blue-500/20">
+              <p className="text-xs font-medium text-blue-100 uppercase tracking-wide">
+                {language === 'km' ? 'ចំនួនមុខទំនិញ' : 'Items'}
+              </p>
+              <p className="text-2xl font-bold mt-1">
+                {items.reduce((sum, item) => sum + item.qty, 0)}
+              </p>
+              <p className="text-sm text-blue-100">
+                {items.length} {language === 'km' ? 'ផលិតផល' : 'products'}
+              </p>
+            </div>
           </div>
-        </div>
-        
-        {/* Total - KHR PRIMARY */}
-        <div className="flex items-center justify-between pb-4 border-b border-gray-200/50">
-          <span className="text-lg font-semibold text-gray-900">{t(language, 'pos.total')}</span>
-          <div className="text-right">
-            <span className="text-2xl font-bold text-primary-600">{formatKHR(subtotalKHR)}</span>
-            <span className="block text-sm text-gray-500">{formatUSD(subtotal)}</span>
-          </div>
-        </div>
+        )}
         
         {/* Action buttons */}
         <div className="grid grid-cols-2 gap-3">
@@ -135,20 +427,13 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
           </button>
         </div>
         <button
-          onClick={() => setShowPayment(true)}
+          onClick={handleStartPayment}
           disabled={items.length === 0}
-          className="btn btn-success btn-lg w-full"
+          className="btn btn-success btn-lg w-full text-lg"
         >
-          {t(language, 'pos.pay')} {items.length > 0 && formatKHR(subtotalKHR)}
+          {t(language, 'pos.pay')} {items.length > 0 && formatKHR(totalKHR)}
         </button>
       </div>
-      
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={showPayment}
-        onClose={() => setShowPayment(false)}
-        totalUSDcents={subtotal}
-      />
       
       {/* Held Carts Modal */}
       <HeldCartsModal

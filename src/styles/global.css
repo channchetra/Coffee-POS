@@ -50,82 +50,44 @@
     @apply px-8 py-4 text-lg;
   }
   
-  .btn-sm {
-    @apply px-4 py-2 text-sm;
-  }
-  
-  .btn-icon {
-    @apply p-3 rounded-full;
-  }
-  
   .input {
-    @apply w-full px-4 py-3.5 text-base border-2 border-gray-200/50 rounded-2xl bg-white/70 backdrop-blur-sm focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10 transition-all;
+    @apply w-full px-4 py-3.5 border border-gray-200/50 rounded-2xl bg-white/70 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-all placeholder:text-gray-400;
   }
   
   .input-lg {
-    @apply px-5 py-4 text-lg;
+    @apply py-4 text-lg;
   }
   
-  /* Glass card */
   .card {
-    @apply bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl shadow-gray-900/5 border border-white/50;
+    @apply bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl shadow-gray-900/5 p-6 border border-white/50;
   }
   
-  .card-solid {
-    @apply bg-white rounded-3xl shadow-xl shadow-gray-900/5 border border-gray-100;
-  }
-  
-  /* Glass panel for sidebar/sections */
   .glass-panel {
-    @apply bg-white/60 backdrop-blur-2xl border border-white/50 shadow-xl shadow-gray-900/5;
+    @apply bg-white/60 backdrop-blur-xl border border-white/30;
   }
   
-  .badge {
-    @apply inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full;
-  }
-  
-  .badge-success {
-    @apply bg-green-100/80 text-green-700 backdrop-blur-sm;
-  }
-  
-  .badge-warning {
-    @apply bg-yellow-100/80 text-yellow-700 backdrop-blur-sm;
-  }
-  
-  .badge-danger {
-    @apply bg-red-100/80 text-red-700 backdrop-blur-sm;
-  }
-  
-  .badge-info {
-    @apply bg-blue-100/80 text-blue-700 backdrop-blur-sm;
-  }
-  
-  .badge-gray {
-    @apply bg-gray-100/80 text-gray-700 backdrop-blur-sm;
-  }
-  
-  /* Product card for touch - glass effect */
+  /* Product card */
   .product-card {
-    @apply bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg shadow-gray-900/5 border border-white/50 p-4 cursor-pointer select-none transition-all duration-200 active:scale-[0.97] hover:shadow-xl hover:bg-white/90 hover:-translate-y-0.5;
+    @apply bg-white/80 backdrop-blur-sm rounded-3xl p-4 md:p-5 shadow-lg shadow-gray-900/5 hover:shadow-xl hover:shadow-gray-900/10 active:scale-[0.98] transition-all duration-200 border border-white/50 cursor-pointer;
   }
   
-  /* Cart item - glass effect */
+  /* Cart item */
   .cart-item {
-    @apply flex items-center gap-3 p-4 bg-white/50 backdrop-blur-sm rounded-2xl border border-white/30;
+    @apply bg-white/70 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-white/50;
   }
   
-  /* Quantity controls */
+  /* Quantity button */
   .qty-btn {
-    @apply w-12 h-12 flex items-center justify-center text-xl font-bold rounded-xl transition-all active:scale-90 shadow-sm;
+    @apply w-10 h-10 flex items-center justify-center rounded-xl text-lg font-bold transition-all active:scale-90 shadow-sm;
   }
   
   /* Category chips */
   .category-chip {
-    @apply px-5 py-2.5 rounded-full text-sm font-semibold transition-all select-none cursor-pointer shadow-sm;
+    @apply px-5 py-2.5 rounded-2xl text-sm font-medium transition-all active:scale-95 shadow-sm;
   }
   
   .category-chip-active {
-    @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-primary-500/30;
+    @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25;
   }
   
   .category-chip-inactive {
@@ -158,86 +120,74 @@
   }
   
   .status-syncing {
-    @apply bg-yellow-500 text-yellow-500/20 animate-pulse;
+    @apply bg-yellow-500 text-yellow-500/20;
   }
   
-  /* Main container padding */
-  .main-container {
-    @apply p-4 md:p-6 lg:p-8;
+  /* Safe area for mobile devices */
+  .safe-bottom {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
   }
   
-  /* Header glass */
-  .header-glass {
-    @apply bg-white/70 backdrop-blur-2xl border-b border-white/50 shadow-sm;
+  .safe-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
   
-  /* Sidebar glass */
-  .sidebar-glass {
-    @apply bg-white/60 backdrop-blur-2xl border-r border-white/50;
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-gray-100/50 rounded-full;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-gray-300/80 rounded-full hover:bg-gray-400/80;
-}
-
-/* Custom animations */
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
+/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.animate-slideUp {
-  animation: slideUp 0.3s ease-out;
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-out;
 }
 
-.animate-shimmer {
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
 }
 
-/* Safe area for mobile */
-.safe-bottom {
-  padding-bottom: max(env(safe-area-inset-bottom, 0), 1rem);
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
 }
 
-.safe-top {
-  padding-top: env(safe-area-inset-top, 0);
-}
-
-/* Decorative background elements */
-.bg-pattern {
-  background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0);
-  background-size: 24px 24px;
+/* Custom primary color - warm orange */
+:root {
+  --color-primary-50: #fff7ed;
+  --color-primary-100: #ffedd5;
+  --color-primary-200: #fed7aa;
+  --color-primary-300: #fdba74;
+  --color-primary-400: #fb923c;
+  --color-primary-500: #f97316;
+  --color-primary-600: #ea580c;
+  --color-primary-700: #c2410c;
+  --color-primary-800: #9a3412;
+  --color-primary-900: #7c2d12;
 }
