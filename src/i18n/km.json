@@ -52,7 +52,10 @@
     "completePayment": "បញ្ចប់ការបង់ប្រាក់",
     "cancel": "បោះបង់",
     "quickAmounts": "ចំនួនរហ័ស",
-    "exactAmount": "តម្លៃដើម"
+    "exactAmount": "តម្លៃដើម",
+    "bank": "ធនាគារ",
+    "bankPayment": "បង់តាមធនាគារ",
+    "noChange": "គ្មានប្រាក់អាប់"
   },
   "invoice": {
     "title": "វិក្កយបត្រ",
@@ -88,6 +91,8 @@
     "todaySales": "ការលក់ថ្ងៃនេះ",
     "totalInvoices": "វិក្កយបត្រសរុប",
     "totalRevenue": "ចំណូលសរុប",
+    "cashTotal": "សាច់ប្រាក់សរុប",
+    "bankTotal": "ធនាគារសរុប",
     "categoryBreakdown": "ការបែងចែកតាមប្រភេទ",
     "topProducts": "ផលិតផលលក់ដាច់បំផុត",
     "offlineMessage": "ផ្ទាំងគ្រប់គ្រងត្រូវការការតភ្ជាប់អ៊ីនធឺណិត",

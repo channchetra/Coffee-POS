@@ -3,7 +3,7 @@ import { CartItem } from './CartItem';
 import { HeldCartsModal } from './HeldCartsModal';
 import { useCartStore, useAuthStore, useHeldCartsStore, useLanguageStore } from '../../lib/store';
 import { formatUSD, formatKHR, usdToKHR } from '../../lib/utils/currency';
-import { saveHeldCart, getHeldCarts, saveLocalInvoice, generateInvoiceNo, getOrCreateDeviceId, type HeldCart, type LocalInvoice, type LocalInvoiceItem } from '../../lib/client/db';
+import { saveHeldCart, getHeldCarts, saveLocalInvoice, generateInvoiceNo, getOrCreateDeviceId, type HeldCart, type LocalInvoice, type LocalInvoiceItem, type PaymentMethod } from '../../lib/client/db';
 import { syncToServer } from '../../lib/client/sync';
 import { t } from '../../i18n';
 import { Button } from '../ui/Button';
@@ -23,6 +23,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   
   // Payment states
   const [paidAmountKHR, setPaidAmountKHR] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [completedInvoice, setCompletedInvoice] = useState<LocalInvoice | null>(null);
@@ -71,6 +72,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   
   const handleStartPayment = () => {
     setPaidAmountKHR('');
+    setPaymentMethod('cash');
     setError('');
     setCompletedInvoice(null);
     setShowPayment(true);
@@ -79,11 +81,19 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   const handleCancelPayment = () => {
     setShowPayment(false);
     setPaidAmountKHR('');
+    setPaymentMethod('cash');
     setError('');
   };
   
   const handleQuickAmountKHR = (amount: number) => {
     setPaidAmountKHR(amount.toString());
+    setPaymentMethod('cash');
+    setError('');
+  };
+  
+  const handleBankPayment = () => {
+    setPaidAmountKHR(totalKHR.toString());
+    setPaymentMethod('bank');
     setError('');
   };
   
@@ -111,12 +121,13 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
         subtotalUSDcents: subtotal,
         totalUSDcents: subtotal,
         paidUSDcents,
-        changeUSDcents,
+        changeUSDcents: paymentMethod === 'bank' ? 0 : changeUSDcents,
         exchangeRateKHR,
         subtotalKHR: totalKHR,
         totalKHR,
         paidKHR,
-        changeKHR,
+        changeKHR: paymentMethod === 'bank' ? 0 : changeKHR,
+        paymentMethod,
         createdAt: now,
         syncStatus: 'pending',
       };
@@ -151,6 +162,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
     setCompletedInvoice(null);
     setShowPayment(false);
     setPaidAmountKHR('');
+    setPaymentMethod('cash');
   };
   
   const handleViewInvoice = () => {
@@ -186,7 +198,17 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
           {/* Invoice Summary */}
           <div className="w-full bg-gray-50 rounded-2xl p-4 mb-6">
             <p className="text-sm text-gray-500 mb-1">{t(language, 'invoice.invoiceNo')}</p>
-            <p className="font-mono font-bold text-lg mb-4">{completedInvoice.invoiceNo}</p>
+            <p className="font-mono font-bold text-lg mb-2">{completedInvoice.invoiceNo}</p>
+            
+            {/* Bank payment badge */}
+            {completedInvoice.paymentMethod === 'bank' && (
+              <div className="mb-3 inline-flex items-center gap-1.5 bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                {language === 'km' ? 'បង់តាមធនាគារ' : 'Bank Payment'}
+              </div>
+            )}
             
             {/* Total & Change in two columns */}
             <div className="grid grid-cols-2 gap-3">
@@ -194,10 +216,17 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
                 <p className="text-xs text-primary-100">{t(language, 'invoice.total')}</p>
                 <p className="text-xl font-bold">{formatKHR(completedInvoice.totalKHR)}</p>
               </div>
-              <div className="bg-blue-500 rounded-xl p-3 text-white text-center">
-                <p className="text-xs text-blue-100">{t(language, 'invoice.change')}</p>
-                <p className="text-xl font-bold">{formatKHR(completedInvoice.changeKHR)}</p>
-              </div>
+              {completedInvoice.paymentMethod === 'bank' ? (
+                <div className="bg-red-500 rounded-xl p-3 text-white text-center">
+                  <p className="text-xs text-red-100">{language === 'km' ? 'វិធីបង់ប្រាក់' : 'Payment'}</p>
+                  <p className="text-xl font-bold">{language === 'km' ? 'ធនាគារ' : 'Bank'}</p>
+                </div>
+              ) : (
+                <div className="bg-blue-500 rounded-xl p-3 text-white text-center">
+                  <p className="text-xs text-blue-100">{t(language, 'invoice.change')}</p>
+                  <p className="text-xl font-bold">{formatKHR(completedInvoice.changeKHR)}</p>
+                </div>
+              )}
             </div>
           </div>
           
@@ -290,18 +319,68 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
           {/* Quick amounts */}
           <div>
             <p className="text-sm font-medium text-gray-700 mb-2">{t(language, 'payment.quickAmounts')}</p>
+            <div className="grid grid-cols-4 gap-2 mb-2">
+              {/* Exact and Bank buttons in first row */}
+              <button
+                onClick={() => handleQuickAmountKHR(totalKHR)}
+                className={`btn py-2.5 text-sm ${paymentMethod === 'cash' && paidKHR === totalKHR ? 'btn-primary' : 'btn-outline'}`}
+              >
+                {t(language, 'payment.exactAmount')}
+              </button>
+              <button
+                onClick={handleBankPayment}
+                className={`btn py-2.5 text-sm font-semibold ${
+                  paymentMethod === 'bank' 
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-500/25' 
+                    : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                }`}
+              >
+                {language === 'km' ? 'ធនាគារ' : 'Bank'}
+              </button>
+              <button
+                onClick={() => handleQuickAmountKHR(5000)}
+                className="btn btn-outline py-2.5 text-sm"
+              >
+                ៛5,000
+              </button>
+              <button
+                onClick={() => handleQuickAmountKHR(10000)}
+                className="btn btn-outline py-2.5 text-sm"
+              >
+                ៛10,000
+              </button>
+            </div>
             <div className="grid grid-cols-3 gap-2">
-              {quickAmountsKHR.map((qa) => (
-                <button
-                  key={qa.label}
-                  onClick={() => handleQuickAmountKHR(qa.value)}
-                  className="btn btn-outline py-2.5 text-sm"
-                >
-                  {qa.label}
-                </button>
-              ))}
+              <button
+                onClick={() => handleQuickAmountKHR(20000)}
+                className="btn btn-outline py-2.5 text-sm"
+              >
+                ៛20,000
+              </button>
+              <button
+                onClick={() => handleQuickAmountKHR(50000)}
+                className="btn btn-outline py-2.5 text-sm"
+              >
+                ៛50,000
+              </button>
+              <button
+                onClick={() => handleQuickAmountKHR(100000)}
+                className="btn btn-outline py-2.5 text-sm"
+              >
+                ៛100,000
+              </button>
             </div>
           </div>
+          
+          {/* Bank payment indicator */}
+          {paymentMethod === 'bank' && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              <span>{language === 'km' ? 'បង់តាមធនាគារ/កាត - មិនមានប្រាក់អាប់' : 'Bank/Card Payment - No change given'}</span>
+            </div>
+          )}
           
           {/* Error message */}
           {error && (

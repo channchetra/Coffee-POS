@@ -75,6 +75,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             totalKHR: invoice.totalKHR,
             paidKHR: invoice.paidKHR,
             changeKHR: invoice.changeKHR,
+            paymentMethod: invoice.paymentMethod || 'cash',
             createdAt: invoice.createdAt
           });
           

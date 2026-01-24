@@ -9,6 +9,7 @@
     "start": "bun run ./dist/server/entry.mjs",
     "db:setup": "bun run scripts/setup-db.ts",
     "db:seed": "bun run scripts/seed-db.ts",
+    "db:migrate": "bun run scripts/migrate-db.ts",
     "db:reset": "bun run scripts/setup-db.ts && bun run scripts/seed-db.ts",
     "docker:build": "docker build -t coffee-pos .",
     "docker:up": "docker-compose up -d",

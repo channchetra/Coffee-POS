@@ -52,7 +52,10 @@
     "completePayment": "Complete Payment",
     "cancel": "Cancel",
     "quickAmounts": "Quick Amounts",
-    "exactAmount": "Exact"
+    "exactAmount": "Exact",
+    "bank": "Bank",
+    "bankPayment": "Bank Payment",
+    "noChange": "No Change"
   },
   "invoice": {
     "title": "Invoice",
@@ -88,6 +91,8 @@
     "todaySales": "Today's Sales",
     "totalInvoices": "Total Invoices",
     "totalRevenue": "Total Revenue",
+    "cashTotal": "Cash Total",
+    "bankTotal": "Bank Total",
     "categoryBreakdown": "Category Breakdown",
     "topProducts": "Top Products",
     "offlineMessage": "Dashboard requires internet connection",

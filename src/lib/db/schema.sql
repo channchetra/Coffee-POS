@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   totalKHR INTEGER NOT NULL,
   paidKHR INTEGER NOT NULL,
   changeKHR INTEGER NOT NULL,
+  paymentMethod TEXT NOT NULL DEFAULT 'cash' CHECK (paymentMethod IN ('cash', 'bank')),
   createdAt TEXT NOT NULL,
   syncedAt TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (cashierId) REFERENCES users(id)

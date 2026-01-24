@@ -182,13 +182,27 @@ export function InvoiceView({ invoiceId }: InvoiceViewProps) {
             </div>
           </div>
           
-          <div className="total-row flex justify-between py-2 bg-green-50 px-3 rounded-lg mt-2">
-            <span className="text-green-700">{t(language, 'invoice.change')}</span>
-            <div className="text-right">
-              <span className="font-bold text-green-700">{formatKHR(invoice.changeKHR)}</span>
-              <span className="block text-sm text-green-600">{formatUSD(invoice.changeUSDcents)}</span>
+          {invoice.paymentMethod === 'bank' ? (
+            <div className="total-row flex justify-between py-2 bg-red-50 px-3 rounded-lg mt-2">
+              <span className="text-red-700 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                {language === 'km' ? 'បង់តាមធនាគារ' : 'Bank Payment'}
+              </span>
+              <div className="text-right">
+                <span className="font-bold text-red-700">{language === 'km' ? 'គ្មានប្រាក់អាប់' : 'No Change'}</span>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="total-row flex justify-between py-2 bg-green-50 px-3 rounded-lg mt-2">
+              <span className="text-green-700">{t(language, 'invoice.change')}</span>
+              <div className="text-right">
+                <span className="font-bold text-green-700">{formatKHR(invoice.changeKHR)}</span>
+                <span className="block text-sm text-green-600">{formatUSD(invoice.changeUSDcents)}</span>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Footer */}

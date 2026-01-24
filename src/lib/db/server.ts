@@ -165,6 +165,7 @@ export function createInvoice(invoice: {
   totalKHR: number;
   paidKHR: number;
   changeKHR: number;
+  paymentMethod?: 'cash' | 'bank';
   createdAt: string;
 }) {
   const db = getDb();
@@ -173,13 +174,13 @@ export function createInvoice(invoice: {
       id, invoiceNo, cashierId, deviceId,
       subtotalUSDcents, totalUSDcents, paidUSDcents, changeUSDcents,
       exchangeRateKHR, subtotalKHR, totalKHR, paidKHR, changeKHR,
-      createdAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      paymentMethod, createdAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     invoice.id, invoice.invoiceNo, invoice.cashierId, invoice.deviceId,
     invoice.subtotalUSDcents, invoice.totalUSDcents, invoice.paidUSDcents, invoice.changeUSDcents,
     invoice.exchangeRateKHR, invoice.subtotalKHR, invoice.totalKHR, invoice.paidKHR, invoice.changeKHR,
-    invoice.createdAt
+    invoice.paymentMethod || 'cash', invoice.createdAt
   );
 }
 
@@ -248,6 +249,18 @@ export function getStats(period: 'today' | 'week' | 'month' = 'today', cashierId
     FROM invoices WHERE ${whereClause}
   `).get(...params) as { count: number; totalUSD: number; totalKHR: number };
   
+  // Get cash-only totals (excluding bank payments)
+  const cashTotalResult = db.query(`
+    SELECT COUNT(*) as count, COALESCE(SUM(totalUSDcents), 0) as totalUSD, COALESCE(SUM(totalKHR), 0) as totalKHR
+    FROM invoices WHERE ${whereClause} AND (paymentMethod = 'cash' OR paymentMethod IS NULL)
+  `).get(...params) as { count: number; totalUSD: number; totalKHR: number };
+  
+  // Get bank-only totals
+  const bankTotalResult = db.query(`
+    SELECT COUNT(*) as count, COALESCE(SUM(totalUSDcents), 0) as totalUSD, COALESCE(SUM(totalKHR), 0) as totalKHR
+    FROM invoices WHERE ${whereClause} AND paymentMethod = 'bank'
+  `).get(...params) as { count: number; totalUSD: number; totalKHR: number };
+  
   const categoryBreakdown = db.query(`
     SELECT ii.nameSnapshot as category, SUM(ii.lineTotalUSDcents) as totalUSD, SUM(ii.lineTotalKHR) as totalKHR, SUM(ii.qty) as totalQty
     FROM invoice_items ii
@@ -299,6 +312,14 @@ export function getStats(period: 'today' | 'week' | 'month' = 'today', cashierId
     totalInvoices: totalResult.count,
     totalRevenueUSD: totalResult.totalUSD,
     totalRevenueKHR: totalResult.totalKHR,
+    // Cash-only totals (money actually in cash drawer)
+    cashInvoices: cashTotalResult.count,
+    cashRevenueUSD: cashTotalResult.totalUSD,
+    cashRevenueKHR: cashTotalResult.totalKHR,
+    // Bank payment totals
+    bankInvoices: bankTotalResult.count,
+    bankRevenueUSD: bankTotalResult.totalUSD,
+    bankRevenueKHR: bankTotalResult.totalKHR,
     categoryBreakdown,
     topProducts,
     dailyStats,

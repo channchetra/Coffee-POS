@@ -12,6 +12,14 @@ interface Stats {
   totalInvoices: number;
   totalRevenueUSD: number;
   totalRevenueKHR: number;
+  // Cash-only totals (excluding bank payments)
+  cashInvoices: number;
+  cashRevenueUSD: number;
+  cashRevenueKHR: number;
+  // Bank payment totals
+  bankInvoices: number;
+  bankRevenueUSD: number;
+  bankRevenueKHR: number;
   categoryBreakdown: { category: string; totalUSD: number; totalKHR: number; totalQty: number }[];
   topProducts: { name: string; totalQty: number; totalUSD: number; totalKHR: number }[];
   dailyStats: { date: string; count: number; totalUSD: number; totalKHR: number }[];
@@ -36,6 +44,7 @@ interface Invoice {
   changeUSDcents: number;
   changeKHR: number;
   exchangeRateKHR: number;
+  paymentMethod?: 'cash' | 'bank';
   createdAt: string;
 }
 
@@ -220,22 +229,46 @@ export function Dashboard() {
       ) : stats ? (
         <>
           {/* Summary cards - KHR PRIMARY */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="card p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="card p-5">
               <p className="text-sm text-gray-500 mb-2">{t(language, 'admin.totalInvoices')}</p>
-              <p className="text-5xl font-bold text-gray-900">{stats.totalInvoices}</p>
-              <p className="text-sm text-gray-400 mt-2">
+              <p className="text-4xl font-bold text-gray-900">{stats.totalInvoices}</p>
+              <p className="text-xs text-gray-400 mt-2">
                 {stats.startDate === stats.endDate 
                   ? stats.startDate 
                   : `${stats.startDate} - ${stats.endDate}`}
               </p>
             </div>
             
-            <div className="card p-6 bg-gradient-to-br from-primary-500 to-primary-600 text-white">
+            <div className="card p-5 bg-gradient-to-br from-primary-500 to-primary-600 text-white">
               <p className="text-sm text-primary-100 mb-2">{t(language, 'admin.totalRevenue')}</p>
               {/* KHR as primary currency */}
-              <p className="text-4xl font-bold">{formatKHR(stats.totalRevenueKHR)}</p>
-              <p className="text-lg text-primary-100 mt-1">{formatUSD(stats.totalRevenueUSD)}</p>
+              <p className="text-3xl font-bold">{formatKHR(stats.totalRevenueKHR)}</p>
+              <p className="text-sm text-primary-100 mt-1">{formatUSD(stats.totalRevenueUSD)}</p>
+            </div>
+            
+            {/* Cash Total - money in drawer */}
+            <div className="card p-5 bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-4 h-4 text-green-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <p className="text-sm text-green-100">{language === 'km' ? 'សាច់ប្រាក់សរុប' : 'Cash Total'}</p>
+              </div>
+              <p className="text-3xl font-bold">{formatKHR(stats.cashRevenueKHR)}</p>
+              <p className="text-sm text-green-100 mt-1">{stats.cashInvoices} {language === 'km' ? 'វិក្កយបត្រ' : 'invoices'}</p>
+            </div>
+            
+            {/* Bank Total */}
+            <div className="card p-5 bg-gradient-to-br from-red-500 to-rose-600 text-white">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-4 h-4 text-red-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                <p className="text-sm text-red-100">{language === 'km' ? 'ធនាគារសរុប' : 'Bank Total'}</p>
+              </div>
+              <p className="text-3xl font-bold">{formatKHR(stats.bankRevenueKHR)}</p>
+              <p className="text-sm text-red-100 mt-1">{stats.bankInvoices} {language === 'km' ? 'វិក្កយបត្រ' : 'invoices'}</p>
             </div>
           </div>
           
@@ -421,6 +454,9 @@ export function Dashboard() {
                         {language === 'km' ? 'សរុប' : 'Total'}
                       </th>
                       <th className="pb-3 text-sm font-semibold text-gray-500 text-center">
+                        {language === 'km' ? 'វិធីបង់' : 'Method'}
+                      </th>
+                      <th className="pb-3 text-sm font-semibold text-gray-500 text-center">
                         {language === 'km' ? 'សកម្មភាព' : 'Action'}
                       </th>
                     </tr>
@@ -445,6 +481,16 @@ export function Dashboard() {
                         <td className="py-3 text-right">
                           <p className="font-semibold text-gray-900">{formatKHR(invoice.totalKHR)}</p>
                           <p className="text-xs text-gray-500">{formatUSD(invoice.totalUSDcents)}</p>
+                        </td>
+                        <td className="py-3 text-center">
+                          {invoice.paymentMethod === 'bank' && (
+                            <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-medium mr-2">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                              </svg>
+                              {language === 'km' ? 'ធនាគារ' : 'Bank'}
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 text-center">
                           <Button
@@ -487,6 +533,14 @@ export function Dashboard() {
                 <div>
                   <p className="text-sm text-gray-500">{language === 'km' ? 'លេខវិក្កយបត្រ' : 'Invoice #'}</p>
                   <p className="font-mono font-bold text-lg">{selectedInvoice.invoice.invoiceNo}</p>
+                  {(selectedInvoice.invoice as any).paymentMethod === 'bank' && (
+                    <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-medium mt-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                      {language === 'km' ? 'បង់តាមធនាគារ' : 'Bank Payment'}
+                    </span>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-500">{language === 'km' ? 'កាលបរិច្ឆេទ' : 'Date'}</p>

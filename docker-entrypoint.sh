@@ -22,7 +22,9 @@ if [ ! -f /app/data/coffee-pos.db ]; then
   echo "  Cashier: cashier / cashier123"
   echo ""
 else
-  echo "Database already exists. Skipping initialization."
+  echo "Database already exists. Running migrations..."
+  cd /app
+  bun run scripts/migrate-db.ts
 fi
 
 # Start the application

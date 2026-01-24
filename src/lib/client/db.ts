@@ -44,6 +44,7 @@ export interface HeldCart {
 }
 
 export type SyncStatus = 'pending' | 'syncing' | 'synced' | 'error';
+export type PaymentMethod = 'cash' | 'bank';
 
 export interface LocalInvoice {
   id: string;
@@ -60,6 +61,7 @@ export interface LocalInvoice {
   totalKHR: number;
   paidKHR: number;
   changeKHR: number;
+  paymentMethod: PaymentMethod;
   createdAt: string;
   syncStatus: SyncStatus;
   syncError?: string;
