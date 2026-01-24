@@ -10,6 +10,7 @@
     "logout": "ចាកចេញ",
     "username": "ឈ្មោះអ្នកប្រើ",
     "password": "ពាក្យសម្ងាត់",
+    "rememberMe": "ចងចាំខ្ញុំ",
     "loginButton": "ចូលប្រព័ន្ធ",
     "loginOffline": "ចូលដោយគ្មានអ៊ីនធឺណិត",
     "invalidCredentials": "ឈ្មោះអ្នកប្រើ ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវ",

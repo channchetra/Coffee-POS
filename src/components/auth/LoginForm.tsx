@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { login, setCurrentUser } from '../../lib/client/auth';
+import { login, setCurrentUser, isRemembered } from '../../lib/client/auth';
 import { useAuthStore, useLanguageStore } from '../../lib/store';
 import { getExchangeRate, setExchangeRate as setDbExchangeRate } from '../../lib/client/db';
 import { formatExchangeRate } from '../../lib/utils/currency';
@@ -15,6 +15,7 @@ export function LoginForm() {
   const [step, setStep] = useState<'login' | 'exchangeRate'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState<{ id: string; username: string; role: string } | null>(null);
@@ -89,7 +90,7 @@ export function LoginForm() {
     setLoading(true);
     
     try {
-      const result = await login(username, password);
+      const result = await login(username, password, rememberMe);
       
       if (!result.success) {
         setError(result.error || t(language, 'auth.invalidCredentials'));
@@ -97,7 +98,7 @@ export function LoginForm() {
       }
       
       if (result.user) {
-        setCurrentUser(result.user);
+        setCurrentUser(result.user, rememberMe);
         setUser(result.user);
         setLoggedInUser(result.user);
         setStep('exchangeRate');
@@ -247,6 +248,17 @@ export function LoginForm() {
             autoComplete="current-password"
           />
           
+          {/* Remember Me Checkbox */}
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-5 h-5 rounded-lg border-gray-300 text-primary-500 focus:ring-primary-500 focus:ring-offset-0 cursor-pointer"
+            />
+            <span className="text-gray-700">{t(language, 'auth.rememberMe')}</span>
+          </label>
+          
           {error && (
             <div className="bg-red-50/80 backdrop-blur-sm text-red-700 px-4 py-3 rounded-2xl text-center border border-red-100">
               {error}
@@ -266,7 +278,7 @@ export function LoginForm() {
         
         <p className="mt-6 text-center text-sm text-gray-500">
           {isOnline 
-            ? 'First login requires internet connection'
+            ? (rememberMe ? 'Stay logged in for 30 days' : 'Session expires when browser closes')
             : 'Offline mode - using cached credentials'}
         </p>
       </div>

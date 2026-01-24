@@ -4,7 +4,7 @@ import { verifyPassword, generateToken } from '../../../lib/auth/password';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
-    const { username, password } = await request.json();
+    const { username, password, rememberMe } = await request.json();
     
     if (!username || !password) {
       return new Response(JSON.stringify({ error: 'Username and password required' }), {
@@ -31,20 +31,21 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
     
-    // Create session
+    // Create session - 30 days if remember me, otherwise 24 hours
     const token = generateToken();
     const sessionId = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+    const sessionDuration = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000; // 30 days or 24 hours
+    const expiresAt = new Date(Date.now() + sessionDuration).toISOString();
     
     createSession(sessionId, user.id, token, expiresAt);
     
-    // Set cookie
+    // Set cookie - 30 days if remember me, otherwise session cookie (expires on browser close)
     cookies.set('session', token, {
       path: '/',
       httpOnly: true,
       secure: false, // Set to true in production with HTTPS
       sameSite: 'lax',
-      maxAge: 24 * 60 * 60 // 24 hours in seconds
+      maxAge: rememberMe ? 30 * 24 * 60 * 60 : undefined // 30 days or session cookie
     });
     
     return new Response(JSON.stringify({

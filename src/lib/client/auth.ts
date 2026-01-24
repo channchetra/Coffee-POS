@@ -22,12 +22,12 @@ export interface LoginResult {
   isOffline?: boolean;
 }
 
-export async function loginOnline(username: string, password: string): Promise<LoginResult> {
+export async function loginOnline(username: string, password: string, rememberMe: boolean = false): Promise<LoginResult> {
   try {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password, rememberMe })
     });
     
     const data = await response.json();
@@ -92,9 +92,9 @@ export async function loginOffline(username: string, password: string): Promise<
   };
 }
 
-export async function login(username: string, password: string): Promise<LoginResult> {
+export async function login(username: string, password: string, rememberMe: boolean = false): Promise<LoginResult> {
   if (navigator.onLine) {
-    const result = await loginOnline(username, password);
+    const result = await loginOnline(username, password, rememberMe);
     if (result.success) return result;
     // If online login fails due to network, try offline
     if (result.error?.includes('Network')) {
@@ -112,11 +112,18 @@ export async function logout(): Promise<void> {
   } catch {
     // Ignore network errors during logout
   }
+  // Clear from both storages
   sessionStorage.removeItem('user');
+  localStorage.removeItem('user');
+  localStorage.removeItem('rememberMe');
 }
 
 export function getCurrentUser(): AuthUser | null {
-  const userStr = sessionStorage.getItem('user');
+  // Check sessionStorage first, then localStorage (for "remember me")
+  const sessionUser = sessionStorage.getItem('user');
+  const localUser = localStorage.getItem('user');
+  const userStr = sessionUser || localUser;
+  
   if (!userStr) return null;
   try {
     return JSON.parse(userStr);
@@ -125,10 +132,21 @@ export function getCurrentUser(): AuthUser | null {
   }
 }
 
-export function setCurrentUser(user: AuthUser): void {
-  sessionStorage.setItem('user', JSON.stringify(user));
+export function setCurrentUser(user: AuthUser, rememberMe: boolean = false): void {
+  if (rememberMe) {
+    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('rememberMe', 'true');
+  } else {
+    sessionStorage.setItem('user', JSON.stringify(user));
+  }
 }
 
 export function clearCurrentUser(): void {
   sessionStorage.removeItem('user');
+  localStorage.removeItem('user');
+  localStorage.removeItem('rememberMe');
+}
+
+export function isRemembered(): boolean {
+  return localStorage.getItem('rememberMe') === 'true';
 }

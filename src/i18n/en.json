@@ -10,6 +10,7 @@
     "logout": "Logout",
     "username": "Username",
     "password": "Password",
+    "rememberMe": "Remember me",
     "loginButton": "Sign In",
     "loginOffline": "Login Offline",
     "invalidCredentials": "Invalid username or password",
