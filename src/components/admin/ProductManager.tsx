@@ -1,0 +1,403 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
+import { useLanguageStore } from '../../lib/store';
+import { formatUSD, formatKHR, usdToKHR } from '../../lib/utils/currency';
+import { t } from '../../i18n';
+
+interface Product {
+  id: string;
+  name: string;
+  category: string;
+  priceUSDcents: number;
+  imageUrl: string;
+}
+
+interface Category {
+  id: string;
+  nameEn: string;
+  nameKm: string;
+  slug: string;
+  sortOrder: number;
+}
+
+export function ProductManager() {
+  const { language } = useLanguageStore();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    category: '',
+    priceUSD: '',
+    imageUrl: ''
+  });
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Default exchange rate for display
+  const displayExchangeRate = 4100;
+  
+  useEffect(() => {
+    fetchData();
+  }, []);
+  
+  const fetchData = async () => {
+    await Promise.all([fetchProducts(), fetchCategories()]);
+  };
+  
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('/api/admin/products');
+      if (!response.ok) throw new Error('Failed to fetch products');
+      const data = await response.json();
+      setProducts(data.products);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error loading products');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/admin/categories');
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      const data = await response.json();
+      setCategories(data.categories);
+    } catch (err) {
+      console.error('Error loading categories:', err);
+    }
+  };
+  
+  const handleAdd = () => {
+    setEditingProduct(null);
+    setFormData({ 
+      name: '', 
+      category: categories.length > 0 ? categories[0].slug : '', 
+      priceUSD: '', 
+      imageUrl: '' 
+    });
+    setShowModal(true);
+  };
+  
+  const handleEdit = (product: Product) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      category: product.category,
+      priceUSD: (product.priceUSDcents / 100).toFixed(2),
+      imageUrl: product.imageUrl || ''
+    });
+    setShowModal(true);
+  };
+  
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this product?')) return;
+    
+    try {
+      const response = await fetch('/api/admin/products', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      
+      if (!response.ok) throw new Error('Failed to delete product');
+      
+      setProducts(products.filter(p => p.id !== id));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error deleting product');
+    }
+  };
+  
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploading(true);
+    setError('');
+    
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('image', file);
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formDataUpload
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to upload image');
+      }
+      
+      const data = await response.json();
+      setFormData({ ...formData, imageUrl: data.imageUrl });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error uploading image');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    
+    try {
+      const priceUSDcents = Math.round(parseFloat(formData.priceUSD) * 100);
+      
+      if (editingProduct) {
+        // Update
+        const response = await fetch('/api/admin/products', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: editingProduct.id,
+            name: formData.name,
+            category: formData.category,
+            priceUSDcents,
+            imageUrl: formData.imageUrl
+          })
+        });
+        
+        if (!response.ok) throw new Error('Failed to update product');
+        
+        setProducts(products.map(p => 
+          p.id === editingProduct.id 
+            ? { ...p, name: formData.name, category: formData.category, priceUSDcents, imageUrl: formData.imageUrl }
+            : p
+        ));
+      } else {
+        // Create
+        const response = await fetch('/api/admin/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name,
+            category: formData.category,
+            priceUSDcents,
+            imageUrl: formData.imageUrl
+          })
+        });
+        
+        if (!response.ok) throw new Error('Failed to create product');
+        
+        const data = await response.json();
+        setProducts([...products, data.product]);
+      }
+      
+      setShowModal(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error saving product');
+    } finally {
+      setSaving(false);
+    }
+  };
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+  
+  // Helper to get category name by slug (with translation)
+  const getCategoryName = (slug: string) => {
+    const cat = categories.find(c => c.slug === slug);
+    if (!cat) return slug.replace('_', ' ');
+    return language === 'km' ? cat.nameKm : cat.nameEn;
+  };
+  
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">{t(language, 'admin.products')}</h2>
+        <Button variant="primary" onClick={handleAdd}>
+          + {t(language, 'admin.addProduct')}
+        </Button>
+      </div>
+      
+      {/* Products grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {products.map((product) => (
+          <div key={product.id} className="card p-4">
+            <div className="w-full h-32 bg-gray-100 rounded-xl mb-3 overflow-hidden">
+              {product.imageUrl ? (
+                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+            <h3 className="font-semibold text-gray-900">{product.name}</h3>
+            <p className="text-sm text-gray-500 capitalize">{getCategoryName(product.category)}</p>
+            {/* KHR Primary */}
+            <p className="text-lg font-bold text-primary-600 mt-1">{formatKHR(usdToKHR(product.priceUSDcents, displayExchangeRate))}</p>
+            <p className="text-sm text-gray-500">{formatUSD(product.priceUSDcents)}</p>
+            
+            <div className="flex gap-2 mt-3">
+              <Button variant="success" size="sm" onClick={() => handleEdit(product)} className="flex-1">
+                {t(language, 'common.edit')}
+              </Button>
+              <Button variant="danger" size="sm" onClick={() => handleDelete(product.id)} className="flex-1">
+                {t(language, 'common.delete')}
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Add/Edit Modal */}
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingProduct ? t(language, 'admin.editProduct') : t(language, 'admin.addProduct')}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label={t(language, 'admin.productName')}
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+          />
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {t(language, 'admin.category')}
+            </label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="input"
+              required
+            >
+              {categories.length === 0 ? (
+                <option value="">{language === 'km' ? 'មិនមានប្រភេទ' : 'No categories available'}</option>
+              ) : (
+                categories.map((cat) => (
+                  <option key={cat.id} value={cat.slug}>
+                    {language === 'km' ? cat.nameKm : cat.nameEn}
+                  </option>
+                ))
+              )}
+            </select>
+            {categories.length === 0 && (
+              <p className="mt-1 text-sm text-amber-600">
+                <a href="/admin/categories" className="underline hover:text-amber-700">
+                  {language === 'km' ? 'បន្ថែមប្រភេទមុន' : 'Add categories first'}
+                </a>
+              </p>
+            )}
+          </div>
+          
+          <Input
+            label={t(language, 'admin.price')}
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.priceUSD}
+            onChange={(e) => setFormData({ ...formData, priceUSD: e.target.value })}
+            required
+          />
+          
+          {/* Image Upload Section */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {language === 'km' ? 'រូបភាពផលិតផល' : 'Product Image'}
+            </label>
+            
+            {/* Current image preview */}
+            {formData.imageUrl && (
+              <div className="mb-3 relative">
+                <img 
+                  src={formData.imageUrl} 
+                  alt="Preview" 
+                  className="w-full h-40 object-cover rounded-xl border border-gray-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, imageUrl: '' })}
+                  className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            
+            {/* Upload button */}
+            <div className="flex gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+                id="image-upload"
+              />
+              <label
+                htmlFor="image-upload"
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-primary-400 hover:bg-primary-50/50 transition-all ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                {uploading ? (
+                  <>
+                    <div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full"></div>
+                    <span className="text-gray-600">{language === 'km' ? 'កំពុងផ្ទុកឡើង...' : 'Uploading...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-gray-600">{language === 'km' ? 'ផ្ទុករូបភាពឡើង' : 'Upload Image'}</span>
+                  </>
+                )}
+              </label>
+            </div>
+            
+            {/* Or enter URL */}
+            <div className="mt-3">
+              <Input
+                label={language === 'km' ? 'ឬបញ្ចូល URL រូបភាព' : 'Or enter image URL'}
+                type="text"
+                value={formData.imageUrl}
+                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                placeholder="/images/products/example.svg"
+              />
+            </div>
+          </div>
+          
+          {error && (
+            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl">
+              {error}
+            </div>
+          )}
+          
+          <div className="flex gap-3 pt-4">
+            <Button type="button" variant="secondary" onClick={() => setShowModal(false)} className="flex-1">
+              {t(language, 'common.cancel')}
+            </Button>
+            <Button type="submit" variant="primary" loading={saving} className="flex-1">
+              {t(language, 'common.save')}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+}

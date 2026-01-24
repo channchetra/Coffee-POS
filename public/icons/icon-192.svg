@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="coffeeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ec771a"/>
+      <stop offset="100%" style="stop-color:#b74510"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="38" fill="url(#coffeeGrad)"/>
+  <g fill="white" transform="translate(38,38)">
+    <!-- Coffee cup -->
+    <path d="M20 45 h55 v55 c0 12-10 22-27.5 22 c-17.5 0-27.5-10-27.5-22 z"/>
+    <!-- Handle -->
+    <path d="M75 55 h12 c9 0 15 6 15 15 c0 9-6 15-15 15 h-12 v-8 h12 c5 0 7-3 7-7 c0-4-2-7-7-7 h-12 z"/>
+    <!-- Steam lines -->
+    <path d="M35 28 q3-12 0-18" stroke="white" fill="none" stroke-width="5" stroke-linecap="round"/>
+    <path d="M50 25 q3-12 0-18" stroke="white" fill="none" stroke-width="5" stroke-linecap="round"/>
+    <path d="M65 28 q3-12 0-18" stroke="white" fill="none" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

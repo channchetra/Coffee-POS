@@ -1,0 +1,57 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+.astro
+
+# Database files (will be created in container)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Uploaded files (managed by volume)
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Docker files (not needed in build context copy)
+docker-compose*.yml
+Dockerfile*
+
+# Documentation
+README.md
+LICENSE
+CHANGELOG.md
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__
+coverage
+
+# Misc
+*.md
+!src/**/*.md

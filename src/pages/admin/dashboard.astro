@@ -1,0 +1,11 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { AdminLayout } from '../../components/admin/AdminLayout';
+import { Dashboard } from '../../components/admin/Dashboard';
+---
+
+<Layout title="Dashboard - My Coffee POS Admin">
+  <AdminLayout client:load>
+    <Dashboard client:load />
+  </AdminLayout>
+</Layout>

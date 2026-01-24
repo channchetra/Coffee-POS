@@ -1,0 +1,15 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { POSLayout } from '../components/pos/POSLayout';
+---
+
+<Layout title="POS - My Coffee POS">
+  <POSLayout client:load />
+</Layout>
+
+<style is:global>
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+</style>

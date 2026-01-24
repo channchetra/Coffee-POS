@@ -1,0 +1,16 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { LoginForm } from '../components/auth/LoginForm';
+---
+
+<Layout title="Login - My Coffee POS">
+  <LoginForm client:load />
+</Layout>
+
+<style>
+  /* Ensure login form fills screen */
+  :global(body) {
+    margin: 0;
+    padding: 0;
+  }
+</style>

@@ -1,0 +1,323 @@
+import React, { useEffect, useState } from 'react';
+import { useLanguageStore, useAuthStore } from '../../lib/store';
+import { formatUSD, formatKHR } from '../../lib/utils/currency';
+import { t } from '../../i18n';
+
+interface Stats {
+  period: string;
+  startDate: string;
+  endDate: string;
+  totalInvoices: number;
+  totalRevenueUSD: number;
+  totalRevenueKHR: number;
+  categoryBreakdown: { category: string; totalUSD: number; totalKHR: number; totalQty: number }[];
+  topProducts: { name: string; totalQty: number; totalUSD: number; totalKHR: number }[];
+  dailyStats: { date: string; count: number; totalUSD: number; totalKHR: number }[];
+  cashierStats: { cashierId: string; cashierName: string; invoiceCount: number; totalUSD: number; totalKHR: number }[];
+}
+
+interface User {
+  id: string;
+  username: string;
+  role: string;
+}
+
+type Period = 'today' | 'week' | 'month';
+
+export function Dashboard() {
+  const { language } = useLanguageStore();
+  const { isOnline } = useAuthStore();
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [period, setPeriod] = useState<Period>('today');
+  const [selectedCashier, setSelectedCashier] = useState<string>('');
+  
+  const fetchStats = async (selectedPeriod: Period, cashierId?: string) => {
+    setLoading(true);
+    setError('');
+    try {
+      let url = `/api/admin/stats?period=${selectedPeriod}`;
+      if (cashierId) {
+        url += `&cashierId=${cashierId}`;
+      }
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch stats');
+      const data = await response.json();
+      setStats(data.stats);
+      if (data.users) {
+        setUsers(data.users);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error loading stats');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    if (!isOnline) {
+      setLoading(false);
+      return;
+    }
+    fetchStats(period, selectedCashier || undefined);
+  }, [isOnline, period, selectedCashier]);
+  
+  const periodLabels = {
+    today: language === 'km' ? 'ថ្ងៃនេះ' : 'Today',
+    week: language === 'km' ? 'សប្ដាហ៍នេះ' : 'This Week',
+    month: language === 'km' ? 'ខែនេះ' : 'This Month'
+  };
+  
+  if (!isOnline) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <div className="card p-12 text-center">
+          <svg className="w-20 h-20 mb-4 mx-auto opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
+          </svg>
+          <p className="text-xl font-medium text-gray-600">{t(language, 'admin.offlineMessage')}</p>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-6">
+      {/* Header with filters */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h2 className="text-2xl font-bold text-gray-900">{t(language, 'admin.dashboard')}</h2>
+          
+          {/* Period filter buttons */}
+          <div className="flex gap-2 p-1 bg-white/50 backdrop-blur-sm rounded-2xl border border-white/30">
+            {(['today', 'week', 'month'] as Period[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                  period === p
+                    ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25'
+                    : 'text-gray-600 hover:bg-white/80'
+                }`}
+              >
+                {periodLabels[p]}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        {/* Cashier filter */}
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-medium text-gray-600">
+            {language === 'km' ? 'អ្នកគិតប្រាក់:' : 'Cashier:'}
+          </label>
+          <select
+            value={selectedCashier}
+            onChange={(e) => setSelectedCashier(e.target.value)}
+            className="input py-2 px-4 min-w-[200px]"
+          >
+            <option value="">{language === 'km' ? 'ទាំងអស់' : 'All Cashiers'}</option>
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.username} ({user.role})
+              </option>
+            ))}
+          </select>
+          {selectedCashier && (
+            <button
+              onClick={() => setSelectedCashier('')}
+              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+            >
+              {language === 'km' ? 'សម្អាត' : 'Clear'}
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full"></div>
+        </div>
+      ) : error ? (
+        <div className="card bg-red-50/80 text-red-700 p-6 rounded-2xl text-center border border-red-100">
+          {error}
+        </div>
+      ) : stats ? (
+        <>
+          {/* Summary cards - KHR PRIMARY */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="card p-6">
+              <p className="text-sm text-gray-500 mb-2">{t(language, 'admin.totalInvoices')}</p>
+              <p className="text-5xl font-bold text-gray-900">{stats.totalInvoices}</p>
+              <p className="text-sm text-gray-400 mt-2">
+                {stats.startDate === stats.endDate 
+                  ? stats.startDate 
+                  : `${stats.startDate} - ${stats.endDate}`}
+              </p>
+            </div>
+            
+            <div className="card p-6 bg-gradient-to-br from-primary-500 to-primary-600 text-white">
+              <p className="text-sm text-primary-100 mb-2">{t(language, 'admin.totalRevenue')}</p>
+              {/* KHR as primary currency */}
+              <p className="text-4xl font-bold">{formatKHR(stats.totalRevenueKHR)}</p>
+              <p className="text-lg text-primary-100 mt-1">{formatUSD(stats.totalRevenueUSD)}</p>
+            </div>
+          </div>
+          
+          {/* Stats by Cashier - Only show when not filtered by specific cashier */}
+          {!selectedCashier && stats.cashierStats && stats.cashierStats.length > 0 && (
+            <div className="card p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                {language === 'km' ? 'ស្ថិតិតាមអ្នកគិតប្រាក់' : 'Stats by Cashier'}
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left border-b border-gray-200">
+                      <th className="pb-3 text-sm font-semibold text-gray-500">
+                        {language === 'km' ? 'អ្នកគិតប្រាក់' : 'Cashier'}
+                      </th>
+                      <th className="pb-3 text-sm font-semibold text-gray-500 text-center">
+                        {language === 'km' ? 'វិក្កយបត្រ' : 'Invoices'}
+                      </th>
+                      <th className="pb-3 text-sm font-semibold text-gray-500 text-right">
+                        {language === 'km' ? 'ចំណូល' : 'Revenue'}
+                      </th>
+                      <th className="pb-3 text-sm font-semibold text-gray-500 text-center">
+                        {language === 'km' ? 'សកម្មភាព' : 'Action'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {stats.cashierStats.map((cashier) => (
+                      <tr key={cashier.cashierId} className="hover:bg-gray-50/50">
+                        <td className="py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold text-sm">
+                              {(cashier.cashierName || 'U')[0].toUpperCase()}
+                            </div>
+                            <span className="font-medium text-gray-900">{cashier.cashierName || 'Unknown'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 text-center text-gray-600">{cashier.invoiceCount}</td>
+                        <td className="py-3 text-right">
+                          <p className="font-semibold text-gray-900">{formatKHR(cashier.totalKHR)}</p>
+                          <p className="text-sm text-gray-500">{formatUSD(cashier.totalUSD)}</p>
+                        </td>
+                        <td className="py-3 text-center">
+                          <button
+                            onClick={() => setSelectedCashier(cashier.cashierId)}
+                            className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                          >
+                            {language === 'km' ? 'មើល' : 'View'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          
+          {/* Top products - KHR PRIMARY */}
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t(language, 'admin.topProducts')}</h3>
+            {stats.topProducts.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">
+                {language === 'km' ? 'មិនមានការលក់' : 'No sales in this period'}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {stats.topProducts.map((product, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
+                    <div className="flex items-center gap-4">
+                      <span className="w-10 h-10 flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-600 text-white font-bold rounded-xl shadow-lg shadow-primary-500/20">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <span className="font-medium text-gray-900">{product.name}</span>
+                        <p className="text-sm text-gray-500">{product.totalQty} {language === 'km' ? 'ផលិតផល' : 'sold'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {/* KHR first */}
+                      <p className="font-bold text-primary-600">{formatKHR(product.totalKHR)}</p>
+                      <p className="text-sm text-gray-500">{formatUSD(product.totalUSD)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          {/* Category breakdown - KHR PRIMARY */}
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t(language, 'admin.categoryBreakdown')}</h3>
+            {stats.categoryBreakdown.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">
+                {language === 'km' ? 'មិនមានការលក់' : 'No sales in this period'}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {stats.categoryBreakdown.map((cat, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
+                    <div>
+                      <span className="font-medium text-gray-900">{cat.category}</span>
+                      <p className="text-sm text-gray-500">{cat.totalQty} {language === 'km' ? 'ផលិតផល' : 'items'}</p>
+                    </div>
+                    <div className="text-right">
+                      {/* KHR first */}
+                      <p className="font-bold text-primary-600">{formatKHR(cat.totalKHR)}</p>
+                      <p className="text-sm text-gray-500">{formatUSD(cat.totalUSD)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          {/* Daily stats (for week/month view) */}
+          {(period === 'week' || period === 'month') && stats.dailyStats.length > 0 && (
+            <div className="card p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                {language === 'km' ? 'ស្ថិតិប្រចាំថ្ងៃ' : 'Daily Stats'}
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left border-b border-gray-200">
+                      <th className="pb-3 text-sm font-semibold text-gray-500">
+                        {language === 'km' ? 'កាលបរិច្ឆេទ' : 'Date'}
+                      </th>
+                      <th className="pb-3 text-sm font-semibold text-gray-500 text-center">
+                        {language === 'km' ? 'វិក្កយបត្រ' : 'Invoices'}
+                      </th>
+                      <th className="pb-3 text-sm font-semibold text-gray-500 text-right">
+                        {language === 'km' ? 'ចំណូល' : 'Revenue'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {stats.dailyStats.map((day, index) => (
+                      <tr key={index} className="hover:bg-gray-50/50">
+                        <td className="py-3 text-gray-900">{day.date}</td>
+                        <td className="py-3 text-center text-gray-600">{day.count}</td>
+                        <td className="py-3 text-right">
+                          <p className="font-semibold text-gray-900">{formatKHR(day.totalKHR)}</p>
+                          <p className="text-sm text-gray-500">{formatUSD(day.totalUSD)}</p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      ) : null}
+    </div>
+  );
+}

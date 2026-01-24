@@ -1,0 +1,14 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { InvoiceView } from '../../components/invoice/InvoiceView';
+
+const { id } = Astro.params;
+---
+
+<Layout title="Invoice - My Coffee POS">
+  <InvoiceView invoiceId={id || ''} client:load />
+</Layout>
+
+<style is:global>
+  @import '../../styles/print.css';
+</style>

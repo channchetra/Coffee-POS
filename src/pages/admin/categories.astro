@@ -1,0 +1,11 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { AdminLayout } from '../../components/admin/AdminLayout';
+import { CategoryManager } from '../../components/admin/CategoryManager';
+---
+
+<Layout title="Categories - Admin">
+  <AdminLayout client:load>
+    <CategoryManager client:load />
+  </AdminLayout>
+</Layout>
