@@ -311,6 +311,95 @@ export function getTodayStats() {
   return getStats('today');
 }
 
+// Get invoices with filtering and pagination
+export function getInvoices(options: {
+  period?: 'today' | 'week' | 'month';
+  cashierId?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const db = getDb();
+  const { period = 'today', cashierId, limit = 50, offset = 0 } = options;
+  
+  // Calculate date range based on period
+  const now = new Date();
+  let startDate: string;
+  
+  if (period === 'today') {
+    startDate = now.toISOString().split('T')[0];
+  } else if (period === 'week') {
+    const weekAgo = new Date(now);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    startDate = weekAgo.toISOString().split('T')[0];
+  } else {
+    const monthAgo = new Date(now);
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    startDate = monthAgo.toISOString().split('T')[0];
+  }
+  
+  const endDate = now.toISOString().split('T')[0];
+  
+  // Build query
+  let query = `
+    SELECT i.*, u.username as cashierName
+    FROM invoices i
+    LEFT JOIN users u ON i.cashierId = u.id
+    WHERE date(i.createdAt) >= date(?) AND date(i.createdAt) <= date(?)
+  `;
+  const params: any[] = [startDate, endDate];
+  
+  if (cashierId) {
+    query += ` AND i.cashierId = ?`;
+    params.push(cashierId);
+  }
+  
+  query += ` ORDER BY i.createdAt DESC LIMIT ? OFFSET ?`;
+  params.push(limit, offset);
+  
+  const invoices = db.query(query).all(...params);
+  
+  // Get total count
+  let countQuery = `
+    SELECT COUNT(*) as total FROM invoices
+    WHERE date(createdAt) >= date(?) AND date(createdAt) <= date(?)
+  `;
+  const countParams: any[] = [startDate, endDate];
+  
+  if (cashierId) {
+    countQuery += ` AND cashierId = ?`;
+    countParams.push(cashierId);
+  }
+  
+  const countResult = db.query(countQuery).get(...countParams) as { total: number };
+  
+  return {
+    invoices,
+    total: countResult.total,
+    limit,
+    offset
+  };
+}
+
+// Get invoice with items
+export function getInvoiceWithItems(invoiceId: string) {
+  const db = getDb();
+  
+  const invoice = db.query(`
+    SELECT i.*, u.username as cashierName
+    FROM invoices i
+    LEFT JOIN users u ON i.cashierId = u.id
+    WHERE i.id = ?
+  `).get(invoiceId);
+  
+  if (!invoice) return null;
+  
+  const items = db.query(`
+    SELECT * FROM invoice_items WHERE invoiceId = ?
+  `).all(invoiceId);
+  
+  return { invoice, items };
+}
+
 // Operations queries (for idempotent sync)
 export function operationExists(opId: string): boolean {
   const db = getDb();

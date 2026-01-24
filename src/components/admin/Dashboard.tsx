@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useLanguageStore, useAuthStore } from '../../lib/store';
 import { formatUSD, formatKHR } from '../../lib/utils/currency';
 import { t } from '../../i18n';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
 
 interface Stats {
   period: string;
@@ -22,6 +24,35 @@ interface User {
   role: string;
 }
 
+interface Invoice {
+  id: string;
+  invoiceNo: string;
+  cashierId: string;
+  cashierName: string;
+  totalUSDcents: number;
+  totalKHR: number;
+  paidUSDcents: number;
+  paidKHR: number;
+  changeUSDcents: number;
+  changeKHR: number;
+  exchangeRateKHR: number;
+  createdAt: string;
+}
+
+interface InvoiceItem {
+  id: string;
+  nameSnapshot: string;
+  priceUSDcentsSnapshot: number;
+  qty: number;
+  lineTotalUSDcents: number;
+  lineTotalKHR: number;
+}
+
+interface InvoiceDetail {
+  invoice: Invoice;
+  items: InvoiceItem[];
+}
+
 type Period = 'today' | 'week' | 'month';
 
 export function Dashboard() {
@@ -33,6 +64,13 @@ export function Dashboard() {
   const [error, setError] = useState('');
   const [period, setPeriod] = useState<Period>('today');
   const [selectedCashier, setSelectedCashier] = useState<string>('');
+  
+  // Invoice states
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
   
   const fetchStats = async (selectedPeriod: Period, cashierId?: string) => {
     setLoading(true);
@@ -56,12 +94,47 @@ export function Dashboard() {
     }
   };
   
+  const fetchInvoices = async (selectedPeriod: Period, cashierId?: string) => {
+    setInvoicesLoading(true);
+    try {
+      let url = `/api/admin/invoices?period=${selectedPeriod}&limit=20`;
+      if (cashierId) {
+        url += `&cashierId=${cashierId}`;
+      }
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch invoices');
+      const data = await response.json();
+      setInvoices(data.invoices || []);
+    } catch (err) {
+      console.error('Error loading invoices:', err);
+    } finally {
+      setInvoicesLoading(false);
+    }
+  };
+  
+  const viewInvoiceDetail = async (invoiceId: string) => {
+    setInvoiceLoading(true);
+    setShowInvoiceModal(true);
+    try {
+      const response = await fetch(`/api/admin/invoices?id=${invoiceId}`);
+      if (!response.ok) throw new Error('Failed to fetch invoice');
+      const data = await response.json();
+      setSelectedInvoice(data);
+    } catch (err) {
+      console.error('Error loading invoice:', err);
+      setSelectedInvoice(null);
+    } finally {
+      setInvoiceLoading(false);
+    }
+  };
+  
   useEffect(() => {
     if (!isOnline) {
       setLoading(false);
       return;
     }
     fetchStats(period, selectedCashier || undefined);
+    fetchInvoices(period, selectedCashier || undefined);
   }, [isOnline, period, selectedCashier]);
   
   const periodLabels = {
@@ -316,8 +389,201 @@ export function Dashboard() {
               </div>
             </div>
           )}
+          
+          {/* Recent Invoices */}
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              {language === 'km' ? 'វិក្កយបត្រថ្មីៗ' : 'Recent Invoices'}
+            </h3>
+            {invoicesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full"></div>
+              </div>
+            ) : invoices.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">
+                {language === 'km' ? 'មិនមានវិក្កយបត្រ' : 'No invoices in this period'}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left border-b border-gray-200">
+                      <th className="pb-3 text-sm font-semibold text-gray-500">
+                        {language === 'km' ? 'លេខវិក្កយបត្រ' : 'Invoice #'}
+                      </th>
+                      <th className="pb-3 text-sm font-semibold text-gray-500">
+                        {language === 'km' ? 'កាលបរិច្ឆេទ' : 'Date'}
+                      </th>
+                      <th className="pb-3 text-sm font-semibold text-gray-500">
+                        {language === 'km' ? 'អ្នកគិតប្រាក់' : 'Cashier'}
+                      </th>
+                      <th className="pb-3 text-sm font-semibold text-gray-500 text-right">
+                        {language === 'km' ? 'សរុប' : 'Total'}
+                      </th>
+                      <th className="pb-3 text-sm font-semibold text-gray-500 text-center">
+                        {language === 'km' ? 'សកម្មភាព' : 'Action'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {invoices.map((invoice) => (
+                      <tr key={invoice.id} className="hover:bg-gray-50/50">
+                        <td className="py-3">
+                          <span className="font-mono text-sm font-medium text-gray-900">
+                            {invoice.invoiceNo}
+                          </span>
+                        </td>
+                        <td className="py-3 text-gray-600 text-sm">
+                          {new Date(invoice.createdAt).toLocaleString(language === 'km' ? 'km-KH' : 'en-US', {
+                            dateStyle: 'short',
+                            timeStyle: 'short'
+                          })}
+                        </td>
+                        <td className="py-3 text-gray-600">
+                          {invoice.cashierName || 'Unknown'}
+                        </td>
+                        <td className="py-3 text-right">
+                          <p className="font-semibold text-gray-900">{formatKHR(invoice.totalKHR)}</p>
+                          <p className="text-xs text-gray-500">{formatUSD(invoice.totalUSDcents)}</p>
+                        </td>
+                        <td className="py-3 text-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => viewInvoiceDetail(invoice.id)}
+                          >
+                            {language === 'km' ? 'មើល' : 'View'}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </>
       ) : null}
+      
+      {/* Invoice Detail Modal */}
+      <Modal
+        isOpen={showInvoiceModal}
+        onClose={() => {
+          setShowInvoiceModal(false);
+          setSelectedInvoice(null);
+        }}
+        title={language === 'km' ? 'ព័ត៌មានវិក្កយបត្រ' : 'Invoice Details'}
+        size="lg"
+      >
+        {invoiceLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full"></div>
+          </div>
+        ) : selectedInvoice ? (
+          <div className="space-y-6">
+            {/* Invoice Header */}
+            <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-sm text-gray-500">{language === 'km' ? 'លេខវិក្កយបត្រ' : 'Invoice #'}</p>
+                  <p className="font-mono font-bold text-lg">{selectedInvoice.invoice.invoiceNo}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">{language === 'km' ? 'កាលបរិច្ឆេទ' : 'Date'}</p>
+                  <p className="font-medium">
+                    {new Date(selectedInvoice.invoice.createdAt).toLocaleString(language === 'km' ? 'km-KH' : 'en-US')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                <div>
+                  <p className="text-sm text-gray-500">{language === 'km' ? 'អ្នកគិតប្រាក់' : 'Cashier'}</p>
+                  <p className="font-medium">{selectedInvoice.invoice.cashierName || 'Unknown'}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">{language === 'km' ? 'អត្រាប្តូរប្រាក់' : 'Exchange Rate'}</p>
+                  <p className="font-medium">1 USD = {selectedInvoice.invoice.exchangeRateKHR.toLocaleString()} KHR</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Invoice Items */}
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-3">
+                {language === 'km' ? 'ផលិតផល' : 'Items'}
+              </h4>
+              <div className="space-y-2">
+                {selectedInvoice.items.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{item.nameSnapshot}</p>
+                      <p className="text-sm text-gray-500">
+                        {formatKHR(Math.round(item.priceUSDcentsSnapshot / 100 * selectedInvoice.invoice.exchangeRateKHR))} × {item.qty}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">{formatKHR(item.lineTotalKHR)}</p>
+                      <p className="text-xs text-gray-500">{formatUSD(item.lineTotalUSDcents)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Invoice Summary */}
+            <div className="bg-primary-50 rounded-xl p-4 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">{language === 'km' ? 'សរុប' : 'Total'}</span>
+                <div className="text-right">
+                  <span className="font-bold text-lg text-primary-600">{formatKHR(selectedInvoice.invoice.totalKHR)}</span>
+                  <p className="text-xs text-gray-500">{formatUSD(selectedInvoice.invoice.totalUSDcents)}</p>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">{language === 'km' ? 'បានបង់' : 'Paid'}</span>
+                <div className="text-right">
+                  <span className="font-medium">{formatKHR(selectedInvoice.invoice.paidKHR)}</span>
+                  <p className="text-xs text-gray-500">{formatUSD(selectedInvoice.invoice.paidUSDcents)}</p>
+                </div>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-primary-200">
+                <span className="text-gray-600">{language === 'km' ? 'ប្រាក់អាប់' : 'Change'}</span>
+                <div className="text-right">
+                  <span className="font-medium">{formatKHR(selectedInvoice.invoice.changeKHR)}</span>
+                  <p className="text-xs text-gray-500">{formatUSD(selectedInvoice.invoice.changeUSDcents)}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Print Button */}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setShowInvoiceModal(false);
+                  setSelectedInvoice(null);
+                }}
+              >
+                {language === 'km' ? 'បិទ' : 'Close'}
+              </Button>
+              <Button
+                variant="primary"
+                className="flex-1"
+                onClick={() => {
+                  window.open(`/invoice/${selectedInvoice.invoice.id}`, '_blank');
+                }}
+              >
+                {language === 'km' ? 'បោះពុម្ព' : 'Print'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-center text-gray-500 py-8">
+            {language === 'km' ? 'រកមិនឃើញវិក្កយបត្រ' : 'Invoice not found'}
+          </p>
+        )}
+      </Modal>
     </div>
   );
 }
