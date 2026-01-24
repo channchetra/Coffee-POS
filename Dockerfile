@@ -1,5 +1,5 @@
-# Use official Bun image (latest for lockfile compatibility)
-FROM oven/bun:latest AS base
+# Use official Bun image (Alpine-based, latest 1.x)
+FROM oven/bun:1-alpine AS base
 
 # Install wget for healthcheck
 RUN apk add --no-cache wget
@@ -11,8 +11,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json bun.lock ./
 
-# Install dependencies
-RUN bun install --frozen-lockfile || bun install
+# Install dependencies (skip frozen lockfile for compatibility)
+RUN bun install
 
 # Build stage
 FROM base AS builder
