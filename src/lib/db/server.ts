@@ -111,7 +111,7 @@ export function deleteExpiredSessions() {
 // Product queries
 export function getAllProducts() {
   const db = getDb();
-  return db.query('SELECT * FROM products ORDER BY category, name').all();
+  return db.query('SELECT * FROM products ORDER BY category, nameEn').all();
 }
 
 export function getProductById(id: string) {
@@ -119,14 +119,14 @@ export function getProductById(id: string) {
   return db.query('SELECT * FROM products WHERE id = ?').get(id);
 }
 
-export function createProduct(id: string, name: string, category: string, priceUSDcents: number, imageUrl: string) {
+export function createProduct(id: string, nameEn: string, nameKm: string, category: string, priceUSDcents: number, imageUrl: string) {
   const db = getDb();
-  db.query('INSERT INTO products (id, name, category, priceUSDcents, imageUrl) VALUES (?, ?, ?, ?, ?)').run(id, name, category, priceUSDcents, imageUrl);
+  db.query('INSERT INTO products (id, nameEn, nameKm, category, priceUSDcents, imageUrl) VALUES (?, ?, ?, ?, ?, ?)').run(id, nameEn, nameKm, category, priceUSDcents, imageUrl);
 }
 
-export function updateProduct(id: string, name: string, category: string, priceUSDcents: number, imageUrl: string) {
+export function updateProduct(id: string, nameEn: string, nameKm: string, category: string, priceUSDcents: number, imageUrl: string) {
   const db = getDb();
-  db.query("UPDATE products SET name = ?, category = ?, priceUSDcents = ?, imageUrl = ?, updatedAt = datetime('now') WHERE id = ?").run(name, category, priceUSDcents, imageUrl, id);
+  db.query("UPDATE products SET nameEn = ?, nameKm = ?, category = ?, priceUSDcents = ?, imageUrl = ?, updatedAt = datetime('now') WHERE id = ?").run(nameEn, nameKm, category, priceUSDcents, imageUrl, id);
 }
 
 export function deleteProduct(id: string) {

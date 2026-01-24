@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Product } from '../../lib/client/db';
 import { formatUSD, formatKHR, usdToKHR } from '../../lib/utils/currency';
-import { useAuthStore } from '../../lib/store';
+import { useAuthStore, useLanguageStore } from '../../lib/store';
 
 interface ProductCardProps {
   product: Product;
@@ -10,7 +10,11 @@ interface ProductCardProps {
 
 export function ProductCard({ product, onSelect }: ProductCardProps) {
   const { exchangeRateKHR } = useAuthStore();
+  const { language } = useLanguageStore();
   const khrPrice = usdToKHR(product.priceUSDcents, exchangeRateKHR);
+  
+  // Get translated product name
+  const productName = language === 'km' ? product.nameKm : product.nameEn;
   
   return (
     <button
@@ -21,7 +25,7 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
         {product.imageUrl ? (
           <img
             src={product.imageUrl}
-            alt={product.name}
+            alt={productName}
             className="w-full h-full object-cover"
             loading="lazy"
           />
@@ -32,7 +36,7 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
         )}
       </div>
       <h3 className="font-semibold text-gray-900 text-sm md:text-base mb-1.5 line-clamp-2 leading-tight">
-        {product.name}
+        {productName}
       </h3>
       <div className="space-y-0.5">
         {/* KHR as PRIMARY */}

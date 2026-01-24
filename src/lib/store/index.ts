@@ -82,7 +82,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       return {
         items: [...state.items, {
           productId: product.id,
-          name: product.name,
+          nameEn: product.nameEn,
+          nameKm: product.nameKm,
           priceUSDcents: product.priceUSDcents,
           qty: 1,
         }],
@@ -135,7 +136,8 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
     const { products, searchQuery, selectedCategory } = get();
     return products.filter(product => {
       const matchesSearch = !searchQuery || 
-        product.name.toLowerCase().includes(searchQuery.toLowerCase());
+        product.nameEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.nameKm.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = !selectedCategory || 
         product.category === selectedCategory;
       return matchesSearch && matchesCategory;

@@ -19,8 +19,9 @@ export interface CachedUser {
 
 export interface Product {
   id: string;
-  name: string;
-  category: 'coffee' | 'wine' | 'soft_drink';
+  nameEn: string;
+  nameKm: string;
+  category: string;
   priceUSDcents: number;
   imageUrl: string;
   updatedAt: string;
@@ -29,7 +30,8 @@ export interface Product {
 
 export interface CartItem {
   productId: string;
-  name: string;
+  nameEn: string;
+  nameKm: string;
   priceUSDcents: number;
   qty: number;
 }

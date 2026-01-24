@@ -8,7 +8,8 @@ import { t } from '../../i18n';
 
 interface Product {
   id: string;
-  name: string;
+  nameEn: string;
+  nameKm: string;
   category: string;
   priceUSDcents: number;
   imageUrl: string;
@@ -30,9 +31,10 @@ export function ProductManager() {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
-    name: '',
+    nameEn: '',
+    nameKm: '',
     category: '',
-    priceUSD: '',
+    priceKHR: '',
     imageUrl: ''
   });
   const [saving, setSaving] = useState(false);
@@ -78,9 +80,10 @@ export function ProductManager() {
   const handleAdd = () => {
     setEditingProduct(null);
     setFormData({ 
-      name: '', 
+      nameEn: '',
+      nameKm: '',
       category: categories.length > 0 ? categories[0].slug : '', 
-      priceUSD: '', 
+      priceKHR: '', 
       imageUrl: '' 
     });
     setShowModal(true);
@@ -88,17 +91,20 @@ export function ProductManager() {
   
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
+    // Convert USD cents to KHR for display
+    const priceKHR = Math.round(usdToKHR(product.priceUSDcents, displayExchangeRate));
     setFormData({
-      name: product.name,
+      nameEn: product.nameEn,
+      nameKm: product.nameKm,
       category: product.category,
-      priceUSD: (product.priceUSDcents / 100).toFixed(2),
+      priceKHR: priceKHR.toString(),
       imageUrl: product.imageUrl || ''
     });
     setShowModal(true);
   };
   
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    if (!confirm(language === 'km' ? 'តើអ្នកប្រាកដថាចង់លុបផលិតផលនេះ?' : 'Are you sure you want to delete this product?')) return;
     
     try {
       const response = await fetch('/api/admin/products', {
@@ -154,7 +160,9 @@ export function ProductManager() {
     setError('');
     
     try {
-      const priceUSDcents = Math.round(parseFloat(formData.priceUSD) * 100);
+      // Convert KHR to USD cents: KHR / exchangeRate * 100
+      const priceKHR = parseInt(formData.priceKHR) || 0;
+      const priceUSDcents = Math.round((priceKHR / displayExchangeRate) * 100);
       
       if (editingProduct) {
         // Update
@@ -163,7 +171,8 @@ export function ProductManager() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: editingProduct.id,
-            name: formData.name,
+            nameEn: formData.nameEn,
+            nameKm: formData.nameKm,
             category: formData.category,
             priceUSDcents,
             imageUrl: formData.imageUrl
@@ -174,7 +183,7 @@ export function ProductManager() {
         
         setProducts(products.map(p => 
           p.id === editingProduct.id 
-            ? { ...p, name: formData.name, category: formData.category, priceUSDcents, imageUrl: formData.imageUrl }
+            ? { ...p, nameEn: formData.nameEn, nameKm: formData.nameKm, category: formData.category, priceUSDcents, imageUrl: formData.imageUrl }
             : p
         ));
       } else {
@@ -183,7 +192,8 @@ export function ProductManager() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: formData.name,
+            nameEn: formData.nameEn,
+            nameKm: formData.nameKm,
             category: formData.category,
             priceUSDcents,
             imageUrl: formData.imageUrl
@@ -204,13 +214,10 @@ export function ProductManager() {
     }
   };
   
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
+  // Helper to get product name (with translation)
+  const getProductName = (product: Product) => {
+    return language === 'km' ? product.nameKm : product.nameEn;
+  };
   
   // Helper to get category name by slug (with translation)
   const getCategoryName = (slug: string) => {
@@ -218,6 +225,14 @@ export function ProductManager() {
     if (!cat) return slug.replace('_', ' ');
     return language === 'km' ? cat.nameKm : cat.nameEn;
   };
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6">
@@ -234,7 +249,7 @@ export function ProductManager() {
           <div key={product.id} className="card p-4">
             <div className="w-full h-32 bg-gray-100 rounded-xl mb-3 overflow-hidden">
               {product.imageUrl ? (
-                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                <img src={product.imageUrl} alt={getProductName(product)} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-300">
                   <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,7 +258,7 @@ export function ProductManager() {
                 </div>
               )}
             </div>
-            <h3 className="font-semibold text-gray-900">{product.name}</h3>
+            <h3 className="font-semibold text-gray-900">{getProductName(product)}</h3>
             <p className="text-sm text-gray-500 capitalize">{getCategoryName(product.category)}</p>
             {/* KHR Primary */}
             <p className="text-lg font-bold text-primary-600 mt-1">{formatKHR(usdToKHR(product.priceUSDcents, displayExchangeRate))}</p>
@@ -269,10 +284,19 @@ export function ProductManager() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label={t(language, 'admin.productName')}
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            label={language === 'km' ? 'ឈ្មោះផលិតផល (English)' : 'Product Name (English)'}
+            value={formData.nameEn}
+            onChange={(e) => setFormData({ ...formData, nameEn: e.target.value })}
             required
+            placeholder="e.g. Espresso"
+          />
+          
+          <Input
+            label={language === 'km' ? 'ឈ្មោះផលិតផល (ខ្មែរ)' : 'Product Name (Khmer)'}
+            value={formData.nameKm}
+            onChange={(e) => setFormData({ ...formData, nameKm: e.target.value })}
+            required
+            placeholder="ឧ. អេស្ប្រេសូ"
           />
           
           <div>
@@ -304,15 +328,23 @@ export function ProductManager() {
             )}
           </div>
           
-          <Input
-            label={t(language, 'admin.price')}
-            type="number"
-            step="0.01"
-            min="0"
-            value={formData.priceUSD}
-            onChange={(e) => setFormData({ ...formData, priceUSD: e.target.value })}
-            required
-          />
+          <div>
+            <Input
+              label={language === 'km' ? 'តម្លៃ (រៀល)' : 'Price (KHR)'}
+              type="number"
+              step="100"
+              min="0"
+              value={formData.priceKHR}
+              onChange={(e) => setFormData({ ...formData, priceKHR: e.target.value })}
+              required
+              placeholder="e.g. 10000"
+            />
+            {formData.priceKHR && (
+              <p className="mt-1 text-sm text-gray-500">
+                ≈ {formatUSD(Math.round((parseInt(formData.priceKHR) / displayExchangeRate) * 100))}
+              </p>
+            )}
+          </div>
           
           {/* Image Upload Section */}
           <div>

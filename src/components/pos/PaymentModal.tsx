@@ -92,12 +92,12 @@ export function PaymentModal({ isOpen, onClose, totalUSDcents }: PaymentModalPro
         syncStatus: 'pending',
       };
       
-      // Create invoice items
+      // Create invoice items (store both names in snapshot for bilingual invoice)
       const invoiceItems: LocalInvoiceItem[] = items.map((item) => ({
         id: crypto.randomUUID(),
         invoiceId,
         productId: item.productId,
-        nameSnapshot: item.name,
+        nameSnapshot: `${item.nameEn} / ${item.nameKm}`,
         priceUSDcentsSnapshot: item.priceUSDcents,
         qty: item.qty,
         lineTotalUSDcents: item.priceUSDcents * item.qty,

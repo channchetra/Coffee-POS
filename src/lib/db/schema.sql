@@ -26,10 +26,11 @@ CREATE TABLE IF NOT EXISTS categories (
   createdAt TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Products table (category now references categories.slug)
+-- Products table (with translations, category references categories.slug)
 CREATE TABLE IF NOT EXISTS products (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
+  nameEn TEXT NOT NULL,
+  nameKm TEXT NOT NULL,
   category TEXT NOT NULL,
   priceUSDcents INTEGER NOT NULL,
   imageUrl TEXT,

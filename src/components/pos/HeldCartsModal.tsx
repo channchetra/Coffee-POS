@@ -75,12 +75,12 @@ export function HeldCartsModal({ isOpen, onClose, onResumeCart }: HeldCartsModal
                 <div className="text-sm text-gray-600 mb-3">
                   {cart.items.slice(0, 3).map((item, i) => (
                     <span key={item.productId}>
-                      {item.name} ×{item.qty}
+                      {language === 'km' ? item.nameKm : item.nameEn} ×{item.qty}
                       {i < Math.min(cart.items.length, 3) - 1 && ', '}
                     </span>
                   ))}
                   {cart.items.length > 3 && (
-                    <span className="text-gray-400"> +{cart.items.length - 3} more</span>
+                    <span className="text-gray-400"> +{cart.items.length - 3} {language === 'km' ? 'ទៀត' : 'more'}</span>
                   )}
                 </div>
                 

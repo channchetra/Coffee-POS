@@ -1,7 +1,7 @@
 import React from 'react';
 import type { CartItem as CartItemType } from '../../lib/client/db';
 import { formatUSD, formatKHR, usdToKHR } from '../../lib/utils/currency';
-import { useAuthStore, useCartStore } from '../../lib/store';
+import { useAuthStore, useCartStore, useLanguageStore } from '../../lib/store';
 
 interface CartItemProps {
   item: CartItemType;
@@ -9,15 +9,19 @@ interface CartItemProps {
 
 export function CartItem({ item }: CartItemProps) {
   const { exchangeRateKHR } = useAuthStore();
+  const { language } = useLanguageStore();
   const { updateQuantity, removeItem } = useCartStore();
   
   const lineTotal = item.priceUSDcents * item.qty;
   const lineTotalKHR = usdToKHR(lineTotal, exchangeRateKHR);
   
+  // Get translated item name
+  const itemName = language === 'km' ? item.nameKm : item.nameEn;
+  
   return (
     <div className="cart-item">
       <div className="flex-1 min-w-0">
-        <h4 className="font-medium text-gray-900 truncate">{item.name}</h4>
+        <h4 className="font-medium text-gray-900 truncate">{itemName}</h4>
         <p className="text-sm text-gray-500">
           {formatKHR(usdToKHR(item.priceUSDcents, exchangeRateKHR))} × {item.qty}
         </p>

@@ -60,21 +60,21 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const { error } = await requireAdmin(cookies);
     if (error) return error;
     
-    const { name, category, priceUSDcents, imageUrl } = await request.json();
+    const { nameEn, nameKm, category, priceUSDcents, imageUrl } = await request.json();
     
-    if (!name || !category || priceUSDcents === undefined) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+    if (!nameEn || !nameKm || !category || priceUSDcents === undefined) {
+      return new Response(JSON.stringify({ error: 'Missing required fields (nameEn, nameKm, category, priceUSDcents)' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
     
     const id = crypto.randomUUID();
-    createProduct(id, name, category, priceUSDcents, imageUrl || '');
+    createProduct(id, nameEn, nameKm, category, priceUSDcents, imageUrl || '');
     
     return new Response(JSON.stringify({ 
       success: true, 
-      product: { id, name, category, priceUSDcents, imageUrl } 
+      product: { id, nameEn, nameKm, category, priceUSDcents, imageUrl } 
     }), {
       status: 201,
       headers: { 'Content-Type': 'application/json' }
@@ -93,10 +93,10 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     const { error } = await requireAdmin(cookies);
     if (error) return error;
     
-    const { id, name, category, priceUSDcents, imageUrl } = await request.json();
+    const { id, nameEn, nameKm, category, priceUSDcents, imageUrl } = await request.json();
     
-    if (!id || !name || !category || priceUSDcents === undefined) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+    if (!id || !nameEn || !nameKm || !category || priceUSDcents === undefined) {
+      return new Response(JSON.stringify({ error: 'Missing required fields (id, nameEn, nameKm, category, priceUSDcents)' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -110,7 +110,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
       });
     }
     
-    updateProduct(id, name, category, priceUSDcents, imageUrl || '');
+    updateProduct(id, nameEn, nameKm, category, priceUSDcents, imageUrl || '');
     
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
