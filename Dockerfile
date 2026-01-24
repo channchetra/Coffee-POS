@@ -51,6 +51,7 @@ COPY --from=builder --chown=astro:nodejs /app/package.json ./package.json
 # Copy scripts for database setup
 COPY --from=builder --chown=astro:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=astro:nodejs /app/src/lib/db/schema.sql ./src/lib/db/schema.sql
+COPY --from=builder --chown=astro:nodejs /app/src/lib/auth ./src/lib/auth
 
 # Copy public assets that might be needed
 COPY --from=builder --chown=astro:nodejs /app/public ./public
