@@ -154,47 +154,56 @@ export function UserManager() {
         </Button>
       </div>
       
-      {/* Users list */}
-      <div className="card overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-100">
-            <tr>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                {t(language, 'auth.username')}
-              </th>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                {t(language, 'admin.role')}
-              </th>
-              <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 font-medium text-gray-900">
-                  {user.username}
-                </td>
-                <td className="px-6 py-4">
-                  <Badge variant={user.role === 'admin' ? 'info' : 'gray'}>
-                    {user.role === 'admin' ? t(language, 'admin.roleAdmin') : t(language, 'admin.roleCashier')}
-                  </Badge>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(user)}>
-                      {t(language, 'common.edit')}
-                    </Button>
-                    <Button variant="danger" size="sm" onClick={() => handleDelete(user.id)}>
-                      {t(language, 'common.delete')}
-                    </Button>
+      {/* Users list - Card layout */}
+      <div className="space-y-2 md:space-y-3">
+        {users.length === 0 ? (
+          <div className="card p-8 text-center text-gray-400">
+            {language === 'km' ? 'មិនមានអ្នកប្រើប្រាស់' : 'No users found'}
+          </div>
+        ) : (
+          users.map((user) => (
+            <div key={user.id} className="card bg-gray-50/50 rounded-xl border border-gray-100 p-3">
+              {/* Row 1: Avatar + Username and Role badge */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                    {user.username[0].toUpperCase()}
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <span className="font-medium text-gray-900 truncate">{user.username}</span>
+                </div>
+                <Badge variant={user.role === 'admin' ? 'info' : 'gray'}>
+                  {user.role === 'admin' ? t(language, 'admin.roleAdmin') : t(language, 'admin.roleCashier')}
+                </Badge>
+              </div>
+              {/* Row 2: Created date and Actions */}
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                <p className="text-xs text-gray-500">
+                  {new Date(user.createdAt).toLocaleDateString(language === 'km' ? 'km-KH' : 'en-US')}
+                </p>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => handleEdit(user)}
+                    className="p-1.5 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors"
+                    title={t(language, 'common.edit')}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(user.id)}
+                    className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                    title={t(language, 'common.delete')}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
       
       {/* Add/Edit Modal */}

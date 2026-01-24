@@ -12,6 +12,22 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const { language } = useLanguageStore();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
+  // Load sidebar collapsed state from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('admin-sidebar-collapsed');
+    if (stored === 'true') {
+      setSidebarCollapsed(true);
+    }
+  }, []);
+  
+  const toggleSidebarCollapse = () => {
+    const newState = !sidebarCollapsed;
+    setSidebarCollapsed(newState);
+    localStorage.setItem('admin-sidebar-collapsed', String(newState));
+  };
   
   useEffect(() => {
     // Listen for online/offline events
@@ -94,47 +110,104 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-stone-100 bg-pattern">
       <Header showSync={false} />
       
-      <div className="flex">
+      <div className="flex relative">
+        {/* Mobile menu button */}
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="lg:hidden fixed bottom-4 left-4 z-50 p-3 bg-primary-500 text-white rounded-full shadow-lg shadow-primary-500/30"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {sidebarOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
+        
+        {/* Mobile overlay */}
+        {sidebarOpen && (
+          <div 
+            className="lg:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-30"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        
         {/* Sidebar */}
-        <aside className="w-64 min-h-[calc(100vh-73px)] sidebar-glass p-5">
-          <nav className="space-y-2">
+        <aside className={`
+          fixed lg:sticky top-0 lg:top-auto left-0 z-40
+          h-screen lg:h-auto lg:min-h-[calc(100vh-57px)]
+          bg-white/95 lg:bg-white/60 lg:backdrop-blur-xl border-r border-white/30
+          p-3 lg:p-4
+          transition-all duration-300 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          ${sidebarCollapsed ? 'w-[72px]' : 'w-64'}
+        `}>
+          {/* Collapse toggle button - desktop only */}
+          <button
+            onClick={toggleSidebarCollapse}
+            className="hidden lg:flex w-full items-center justify-center p-2 mb-3 text-gray-500 hover:text-gray-700 hover:bg-white/50 rounded-xl transition-colors"
+            title={sidebarCollapsed ? 'Expand' : 'Collapse'}
+          >
+            <svg className={`w-5 h-5 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          <nav className="space-y-1 lg:space-y-2">
             {navItems.map((item) => {
               const isActive = currentPath === item.href;
+              // On mobile drawer: always show text. On desktop: respect sidebarCollapsed
+              const showText = !sidebarCollapsed || sidebarOpen;
               return (
                 <a
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 rounded-xl transition-all ${
+                    sidebarCollapsed && !sidebarOpen
+                      ? 'lg:w-11 lg:h-11 lg:justify-center lg:p-0 px-3 py-2.5' 
+                      : 'px-3 lg:px-4 py-2.5 lg:py-3'
+                  } ${
                     isActive
                       ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25'
-                      : 'text-gray-600 hover:bg-white/50 hover:text-gray-900'
+                      : 'text-gray-600 hover:bg-gray-100 lg:hover:bg-white/50 hover:text-gray-900'
                   }`}
+                  title={sidebarCollapsed && !sidebarOpen ? item.label : undefined}
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
                   </svg>
-                  <span className="font-medium">{item.label}</span>
+                  {showText && <span className="font-medium">{item.label}</span>}
+                  {/* Desktop collapsed: hide text */}
+                  {!showText && <span className="hidden">{item.label}</span>}
                 </a>
               );
             })}
           </nav>
           
           {/* Link to POS */}
-          <div className="mt-8 pt-4 border-t border-white/30">
+          <div className="mt-6 lg:mt-8 pt-3 lg:pt-4 border-t border-gray-200 lg:border-white/30">
             <a
               href="/pos"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-white/50 hover:text-gray-900 transition-all"
+              onClick={() => setSidebarOpen(false)}
+              className={`flex items-center gap-3 rounded-xl text-gray-600 hover:bg-gray-100 lg:hover:bg-white/50 hover:text-gray-900 transition-all ${
+                sidebarCollapsed && !sidebarOpen
+                  ? 'lg:w-11 lg:h-11 lg:justify-center lg:p-0 px-3 py-2.5' 
+                  : 'px-3 lg:px-4 py-2.5 lg:py-3'
+              }`}
+              title={sidebarCollapsed && !sidebarOpen ? t(language, 'pos.title') : undefined}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
-              <span className="font-medium">{t(language, 'pos.title')}</span>
+              {(sidebarOpen || !sidebarCollapsed) && <span className="font-medium">{t(language, 'pos.title')}</span>}
             </a>
           </div>
         </aside>
         
         {/* Main content */}
-        <main className="flex-1 p-6 lg:p-8">
+        <main className={`flex-1 p-4 lg:p-6 xl:p-8 transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-0' : ''}`}>
           {children}
         </main>
       </div>

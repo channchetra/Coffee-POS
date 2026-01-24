@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ProductCard } from './ProductCard';
 import { useProductsStore, useCartStore, useLanguageStore } from '../../lib/store';
 import { getCachedProducts, cacheProducts, type Product } from '../../lib/client/db';
@@ -17,6 +17,8 @@ export function ProductGrid() {
   const { addItem } = useCartStore();
   const { language } = useLanguageStore();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     const loadData = async () => {
@@ -72,10 +74,17 @@ export function ProductGrid() {
     }))
   ];
   
+  // Focus search input when mobile search opens
+  useEffect(() => {
+    if (showMobileSearch && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showMobileSearch]);
+  
   return (
     <div className="flex flex-col h-full">
-      {/* Search */}
-      <div className="p-4 md:p-6 glass-panel border-b border-white/30">
+      {/* Desktop Search - hidden on mobile */}
+      <div className="hidden md:block p-4 md:p-6 glass-panel border-b border-white/30">
         <div className="relative max-w-2xl">
           <svg
             className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
@@ -100,14 +109,78 @@ export function ProductGrid() {
         </div>
       </div>
       
-      {/* Category filters */}
-      <div className="px-4 md:px-6 py-4 glass-panel border-b border-white/30 overflow-x-auto">
-        <div className="flex gap-3">
+      {/* Mobile Search Popup */}
+      {showMobileSearch && (
+        <div className="md:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-start justify-center pt-20 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-4 animate-slideUp">
+            <div className="relative">
+              <svg
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder={t(language, 'pos.search')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input pl-12 pr-12"
+              />
+              <button
+                onClick={() => setShowMobileSearch(false)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setShowMobileSearch(false);
+                }}
+                className="mt-3 w-full py-2 text-sm text-gray-500 hover:text-gray-700"
+              >
+                {language === 'km' ? 'សម្អាតការស្វែងរក' : 'Clear search'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Category filters with search icon on mobile */}
+      <div className="px-3 md:px-6 py-3 md:py-4 glass-panel border-b border-white/30 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-2 md:gap-3 items-center">
+          {/* Mobile search button */}
+          <button
+            onClick={() => setShowMobileSearch(true)}
+            className={`md:hidden flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl transition-all ${
+              searchQuery 
+                ? 'bg-primary-500 text-white' 
+                : 'bg-white/70 text-gray-600 border border-white/50'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </button>
+          
           {categoryOptions.map((cat) => (
             <button
               key={cat.key || 'all'}
               onClick={() => setSelectedCategory(cat.key)}
-              className={`category-chip whitespace-nowrap ${
+              className={`category-chip whitespace-nowrap text-sm px-3 py-2 md:px-5 md:py-2.5 ${
                 selectedCategory === cat.key
                   ? 'category-chip-active'
                   : 'category-chip-inactive'

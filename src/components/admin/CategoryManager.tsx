@@ -171,67 +171,56 @@ export function CategoryManager() {
         </Button>
       </div>
       
-      {/* Categories list */}
-      <div className="card overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50/50 border-b border-gray-200">
-              <th className="text-left py-4 px-6 font-semibold text-gray-600">
-                {language === 'km' ? 'ឈ្មោះ (English)' : 'Name (English)'}
-              </th>
-              <th className="text-left py-4 px-6 font-semibold text-gray-600">
-                {language === 'km' ? 'ឈ្មោះ (ខ្មែរ)' : 'Name (Khmer)'}
-              </th>
-              <th className="text-left py-4 px-6 font-semibold text-gray-600">
-                Slug
-              </th>
-              <th className="text-center py-4 px-6 font-semibold text-gray-600">
-                {language === 'km' ? 'លំដាប់' : 'Order'}
-              </th>
-              <th className="text-right py-4 px-6 font-semibold text-gray-600">
-                {language === 'km' ? 'សកម្មភាព' : 'Actions'}
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {categories.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="text-center py-12 text-gray-400">
-                  {language === 'km' ? 'មិនមានប្រភេទ' : 'No categories found'}
-                </td>
-              </tr>
-            ) : (
-              categories.map((category) => (
-                <tr key={category.id} className="hover:bg-gray-50/50">
-                  <td className="py-4 px-6">
-                    <span className="font-medium text-gray-900">{category.nameEn}</span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className="font-medium text-gray-900">{category.nameKm}</span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <code className="px-2 py-1 bg-gray-100 rounded text-sm text-gray-600">
-                      {category.slug}
-                    </code>
-                  </td>
-                  <td className="py-4 px-6 text-center">
-                    <span className="text-gray-600">{category.sortOrder}</span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(category)}>
-                        {t(language, 'common.edit')}
-                      </Button>
-                      <Button variant="danger" size="sm" onClick={() => handleDelete(category.id)}>
-                        {t(language, 'common.delete')}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      {/* Categories list - Card layout */}
+      <div className="space-y-2 md:space-y-3">
+        {categories.length === 0 ? (
+          <div className="card p-8 text-center text-gray-400">
+            {language === 'km' ? 'មិនមានប្រភេទ' : 'No categories found'}
+          </div>
+        ) : (
+          categories.map((category) => (
+            <div key={category.id} className="card bg-gray-50/50 rounded-xl border border-gray-100 p-3">
+              {/* Row 1: Names */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                    {category.sortOrder}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-medium text-gray-900 text-sm block truncate">{category.nameEn}</span>
+                    <span className="text-xs text-gray-500 block truncate">{category.nameKm}</span>
+                  </div>
+                </div>
+                <code className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600 flex-shrink-0 ml-2">
+                  {category.slug}
+                </code>
+              </div>
+              {/* Row 2: Actions */}
+              <div className="flex items-center justify-end mt-2 pt-2 border-t border-gray-100">
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => handleEdit(category)}
+                    className="p-1.5 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors"
+                    title={t(language, 'common.edit')}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(category.id)}
+                    className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                    title={t(language, 'common.delete')}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
       
       {/* Add/Edit Modal */}
