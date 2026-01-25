@@ -12,6 +12,7 @@ interface Product {
   nameKm: string;
   category: string;
   priceUSDcents: number;
+  priceKHR: number;
   imageUrl: string;
 }
 
@@ -91,13 +92,12 @@ export function ProductManager() {
   
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
-    // Convert USD cents to KHR for display
-    const priceKHR = Math.round(usdToKHR(product.priceUSDcents, displayExchangeRate));
+    // Use priceKHR directly from product (source of truth)
     setFormData({
       nameEn: product.nameEn,
       nameKm: product.nameKm,
       category: product.category,
-      priceKHR: priceKHR.toString(),
+      priceKHR: (product.priceKHR || 0).toString(),
       imageUrl: product.imageUrl || ''
     });
     setShowModal(true);
@@ -160,8 +160,9 @@ export function ProductManager() {
     setError('');
     
     try {
-      // Convert KHR to USD cents: KHR / exchangeRate * 100
+      // Store priceKHR directly (source of truth)
       const priceKHR = parseInt(formData.priceKHR) || 0;
+      // Calculate USD cents for compatibility
       const priceUSDcents = Math.round((priceKHR / displayExchangeRate) * 100);
       
       if (editingProduct) {
@@ -174,6 +175,7 @@ export function ProductManager() {
             nameEn: formData.nameEn,
             nameKm: formData.nameKm,
             category: formData.category,
+            priceKHR,
             priceUSDcents,
             imageUrl: formData.imageUrl
           })
@@ -183,7 +185,7 @@ export function ProductManager() {
         
         setProducts(products.map(p => 
           p.id === editingProduct.id 
-            ? { ...p, nameEn: formData.nameEn, nameKm: formData.nameKm, category: formData.category, priceUSDcents, imageUrl: formData.imageUrl }
+            ? { ...p, nameEn: formData.nameEn, nameKm: formData.nameKm, category: formData.category, priceUSDcents, priceKHR, imageUrl: formData.imageUrl }
             : p
         ));
       } else {
@@ -195,6 +197,7 @@ export function ProductManager() {
             nameEn: formData.nameEn,
             nameKm: formData.nameKm,
             category: formData.category,
+            priceKHR,
             priceUSDcents,
             imageUrl: formData.imageUrl
           })
@@ -270,7 +273,7 @@ export function ProductManager() {
                   <p className="text-xs text-gray-500 capitalize truncate">{getCategoryName(product.category)}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="font-bold text-primary-600 text-sm">{formatKHR(usdToKHR(product.priceUSDcents, displayExchangeRate))}</p>
+                  <p className="font-bold text-primary-600 text-sm">{formatKHR(product.priceKHR || 0)}</p>
                   <p className="text-xs text-gray-500">{formatUSD(product.priceUSDcents)}</p>
                 </div>
               </div>

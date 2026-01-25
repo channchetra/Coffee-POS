@@ -27,12 +27,15 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 -- Products table (with translations, category references categories.slug)
+-- priceKHR is the source of truth (user-entered value)
+-- priceUSDcents is calculated from priceKHR for compatibility
 CREATE TABLE IF NOT EXISTS products (
   id TEXT PRIMARY KEY,
   nameEn TEXT NOT NULL,
   nameKm TEXT NOT NULL,
   category TEXT NOT NULL,
   priceUSDcents INTEGER NOT NULL,
+  priceKHR INTEGER NOT NULL DEFAULT 0,
   imageUrl TEXT,
   updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
   createdAt TEXT NOT NULL DEFAULT (datetime('now'))

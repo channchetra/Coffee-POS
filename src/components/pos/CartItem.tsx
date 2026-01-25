@@ -1,20 +1,20 @@
 import React from 'react';
 import type { CartItem as CartItemType } from '../../lib/client/db';
-import { formatUSD, formatKHR, usdToKHR } from '../../lib/utils/currency';
-import { useAuthStore, useCartStore, useLanguageStore } from '../../lib/store';
+import { formatUSD, formatKHR } from '../../lib/utils/currency';
+import { useCartStore, useLanguageStore } from '../../lib/store';
 
 interface CartItemProps {
   item: CartItemType;
 }
 
 export function CartItem({ item }: CartItemProps) {
-  const { exchangeRateKHR } = useAuthStore();
   const { language } = useLanguageStore();
   const { updateQuantity, removeItem } = useCartStore();
   
   const lineTotal = item.priceUSDcents * item.qty;
-  const lineTotalKHR = usdToKHR(lineTotal, exchangeRateKHR);
-  const unitPriceKHR = usdToKHR(item.priceUSDcents, exchangeRateKHR);
+  // Use priceKHR directly (source of truth) - no conversion needed
+  const unitPriceKHR = item.priceKHR || 0;
+  const lineTotalKHR = unitPriceKHR * item.qty;
   
   // Get translated item name
   const itemName = language === 'km' ? item.nameKm : item.nameEn;

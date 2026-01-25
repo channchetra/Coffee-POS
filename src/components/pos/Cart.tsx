@@ -28,8 +28,9 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   const [processing, setProcessing] = useState(false);
   const [completedInvoice, setCompletedInvoice] = useState<LocalInvoice | null>(null);
   
-  const subtotal = getSubtotal();
-  const totalKHR = usdToKHR(subtotal, exchangeRateKHR);
+  const subtotal = getSubtotal(); // USD cents for compatibility
+  // Calculate KHR total directly from items' priceKHR (source of truth)
+  const totalKHR = items.reduce((sum, item) => sum + (item.priceKHR || 0) * item.qty, 0);
   const paidKHR = parseInt(paidAmountKHR, 10) || 0;
   const paidUSDcents = Math.round((paidKHR / exchangeRateKHR) * 100);
   const changeKHR = Math.max(0, paidKHR - totalKHR);
@@ -140,7 +141,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
         priceUSDcentsSnapshot: item.priceUSDcents,
         qty: item.qty,
         lineTotalUSDcents: item.priceUSDcents * item.qty,
-        lineTotalKHR: usdToKHR(item.priceUSDcents * item.qty, exchangeRateKHR),
+        lineTotalKHR: (item.priceKHR || 0) * item.qty,
       }));
       
       await saveLocalInvoice(invoice, invoiceItems);

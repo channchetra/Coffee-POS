@@ -119,14 +119,14 @@ export function getProductById(id: string) {
   return db.query('SELECT * FROM products WHERE id = ?').get(id);
 }
 
-export function createProduct(id: string, nameEn: string, nameKm: string, category: string, priceUSDcents: number, imageUrl: string) {
+export function createProduct(id: string, nameEn: string, nameKm: string, category: string, priceUSDcents: number, priceKHR: number, imageUrl: string) {
   const db = getDb();
-  db.query('INSERT INTO products (id, nameEn, nameKm, category, priceUSDcents, imageUrl) VALUES (?, ?, ?, ?, ?, ?)').run(id, nameEn, nameKm, category, priceUSDcents, imageUrl);
+  db.query('INSERT INTO products (id, nameEn, nameKm, category, priceUSDcents, priceKHR, imageUrl) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, nameEn, nameKm, category, priceUSDcents, priceKHR, imageUrl);
 }
 
-export function updateProduct(id: string, nameEn: string, nameKm: string, category: string, priceUSDcents: number, imageUrl: string) {
+export function updateProduct(id: string, nameEn: string, nameKm: string, category: string, priceUSDcents: number, priceKHR: number, imageUrl: string) {
   const db = getDb();
-  db.query("UPDATE products SET nameEn = ?, nameKm = ?, category = ?, priceUSDcents = ?, imageUrl = ?, updatedAt = datetime('now') WHERE id = ?").run(nameEn, nameKm, category, priceUSDcents, imageUrl, id);
+  db.query("UPDATE products SET nameEn = ?, nameKm = ?, category = ?, priceUSDcents = ?, priceKHR = ?, imageUrl = ?, updatedAt = datetime('now') WHERE id = ?").run(nameEn, nameKm, category, priceUSDcents, priceKHR, imageUrl, id);
 }
 
 export function deleteProduct(id: string) {

@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Product } from '../../lib/client/db';
-import { formatUSD, formatKHR, usdToKHR } from '../../lib/utils/currency';
-import { useAuthStore, useLanguageStore } from '../../lib/store';
+import { formatUSD, formatKHR } from '../../lib/utils/currency';
+import { useLanguageStore } from '../../lib/store';
 
 interface ProductCardProps {
   product: Product;
@@ -9,9 +9,9 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, onSelect }: ProductCardProps) {
-  const { exchangeRateKHR } = useAuthStore();
   const { language } = useLanguageStore();
-  const khrPrice = usdToKHR(product.priceUSDcents, exchangeRateKHR);
+  // Use priceKHR directly (source of truth) - no conversion needed
+  const khrPrice = product.priceKHR || 0;
   
   // Get translated product name
   const productName = language === 'km' ? product.nameKm : product.nameEn;

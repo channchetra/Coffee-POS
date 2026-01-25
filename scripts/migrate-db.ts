@@ -28,11 +28,18 @@ if (!columnExists('invoices', 'paymentMethod')) {
   console.log('✅ paymentMethod column already exists, skipping.\n');
 }
 
-// Add more migrations here as needed...
-// Example:
-// if (!columnExists('products', 'newColumn')) {
-//   db.exec(`ALTER TABLE products ADD COLUMN newColumn TEXT DEFAULT ''`);
-// }
+// Migration: Add priceKHR column to products table
+// This stores the exact KHR price entered by admin, avoiding conversion rounding errors
+if (!columnExists('products', 'priceKHR')) {
+  console.log('📝 Adding priceKHR column to products table...');
+  // Default to priceUSDcents * 41 (rough conversion from cents to KHR at ~4100 rate)
+  db.exec(`ALTER TABLE products ADD COLUMN priceKHR INTEGER NOT NULL DEFAULT 0`);
+  // Update existing products: calculate priceKHR from priceUSDcents
+  db.exec(`UPDATE products SET priceKHR = priceUSDcents * 41 WHERE priceKHR = 0`);
+  console.log('✅ priceKHR column added and existing prices migrated!\n');
+} else {
+  console.log('✅ priceKHR column already exists, skipping.\n');
+}
 
 db.close();
 

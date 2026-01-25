@@ -23,6 +23,7 @@ export interface Product {
   nameKm: string;
   category: string;
   priceUSDcents: number;
+  priceKHR: number;
   imageUrl: string;
   updatedAt: string;
   createdAt: string;
@@ -33,6 +34,7 @@ export interface CartItem {
   nameEn: string;
   nameKm: string;
   priceUSDcents: number;
+  priceKHR: number;
   qty: number;
 }
 
