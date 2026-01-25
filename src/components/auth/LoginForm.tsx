@@ -20,7 +20,7 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState<{ id: string; username: string; role: string } | null>(null);
   
-  const [exchangeRateInput, setExchangeRateInput] = useState('4100');
+  const [exchangeRateInput, setExchangeRateInput] = useState('4000');
   const [recommendedRate, setRecommendedRate] = useState<number | null>(null);
   const [fetchingRate, setFetchingRate] = useState(false);
   

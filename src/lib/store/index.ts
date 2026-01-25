@@ -18,7 +18,7 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      exchangeRateKHR: 4100,
+      exchangeRateKHR: 4000,
       isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
       setUser: (user) => set({ user }),
       setExchangeRate: (rate) => set({ exchangeRateKHR: rate }),

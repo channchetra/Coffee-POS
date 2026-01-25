@@ -6,7 +6,7 @@ import { t } from '../../i18n';
 
 export function SettingsManager() {
   const { language } = useLanguageStore();
-  const [exchangeRate, setExchangeRate] = useState('4100');
+  const [exchangeRate, setExchangeRate] = useState('4000');
   const [autoPrintInvoice, setAutoPrintInvoice] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -19,7 +19,7 @@ export function SettingsManager() {
         const response = await fetch('/api/settings');
         if (!response.ok) throw new Error('Failed to fetch settings');
         const data = await response.json();
-        setExchangeRate(data.defaultExchangeRateKHR?.toString() || '4100');
+        setExchangeRate(data.defaultExchangeRateKHR?.toString() || '4000');
         setAutoPrintInvoice(data.autoPrintInvoice || false);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error loading settings');

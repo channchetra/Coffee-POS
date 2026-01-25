@@ -44,7 +44,7 @@ export function ProductManager() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Default exchange rate for display
-  const displayExchangeRate = 4100;
+  const displayExchangeRate = 4000;
   
   useEffect(() => {
     fetchData();

@@ -33,7 +33,7 @@ export function formatKHR(riels: number): string {
 /**
  * Convert USD cents to KHR riels
  * @param usdCents Amount in USD cents
- * @param exchangeRate KHR per 1 USD (e.g., 4100)
+ * @param exchangeRate KHR per 1 USD (e.g., 4000)
  * @returns Amount in KHR riels (rounded)
  */
 export function usdToKHR(usdCents: number, exchangeRate: number): number {

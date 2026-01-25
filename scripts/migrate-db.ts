@@ -32,7 +32,7 @@ if (!columnExists('invoices', 'paymentMethod')) {
 // This stores the exact KHR price entered by admin, avoiding conversion rounding errors
 if (!columnExists('products', 'priceKHR')) {
   console.log('📝 Adding priceKHR column to products table...');
-  // Default to priceUSDcents * 41 (rough conversion from cents to KHR at ~4100 rate)
+  // Default to priceUSDcents * 41 (rough conversion from cents to KHR at ~4000 rate)
   db.exec(`ALTER TABLE products ADD COLUMN priceKHR INTEGER NOT NULL DEFAULT 0`);
   // Update existing products: calculate priceKHR from priceUSDcents
   db.exec(`UPDATE products SET priceKHR = priceUSDcents * 41 WHERE priceKHR = 0`);

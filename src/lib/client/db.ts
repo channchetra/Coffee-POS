@@ -126,7 +126,7 @@ export async function getOrCreateDeviceId(): Promise<string> {
       id: 'main',
       deviceId,
       language: 'en',
-      lastExchangeRateKHR: 4100
+      lastExchangeRateKHR: 4000
     };
     await db.meta.put(meta);
   }
@@ -141,7 +141,7 @@ export async function getMeta(): Promise<Meta> {
       id: 'main',
       deviceId,
       language: 'en',
-      lastExchangeRateKHR: 4100
+      lastExchangeRateKHR: 4000
     };
     await db.meta.put(meta);
   }

@@ -21,7 +21,7 @@ export const GET: APIRoute = async ({ cookies }) => {
       });
     }
     
-    const defaultExchangeRateKHR = getSetting('defaultExchangeRateKHR') || 4100;
+    const defaultExchangeRateKHR = getSetting('defaultExchangeRateKHR') || 4000;
     const autoPrintInvoice = getSetting('autoPrintInvoice') || false;
     
     return new Response(JSON.stringify({ 

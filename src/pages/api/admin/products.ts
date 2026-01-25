@@ -69,8 +69,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
     
-    // Calculate USD cents from KHR (for compatibility) - use standard rate of 4100
-    const calculatedUSDcents = priceUSDcents ?? Math.round((priceKHR / 4100) * 100);
+    // Calculate USD cents from KHR (for compatibility) - use standard rate of 4000
+    const calculatedUSDcents = priceUSDcents ?? Math.round((priceKHR / 4000) * 100);
     
     const id = crypto.randomUUID();
     createProduct(id, nameEn, nameKm, category, calculatedUSDcents, priceKHR, imageUrl || '');
@@ -113,8 +113,8 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
       });
     }
     
-    // Calculate USD cents from KHR (for compatibility) - use standard rate of 4100
-    const calculatedUSDcents = priceUSDcents ?? Math.round((priceKHR / 4100) * 100);
+    // Calculate USD cents from KHR (for compatibility) - use standard rate of 4000
+    const calculatedUSDcents = priceUSDcents ?? Math.round((priceKHR / 4000) * 100);
     
     updateProduct(id, nameEn, nameKm, category, calculatedUSDcents, priceKHR, imageUrl || '');
     

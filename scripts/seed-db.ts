@@ -71,7 +71,7 @@ async function seed() {
 
   // Create default settings
   const settings = [
-    { key: 'defaultExchangeRateKHR', value: 4100 },
+    { key: 'defaultExchangeRateKHR', value: 4000 },
   ];
 
   for (const setting of settings) {
