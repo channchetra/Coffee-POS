@@ -20,11 +20,68 @@ export function InvoiceView({ invoiceId }: InvoiceViewProps) {
   
   useEffect(() => {
     const loadInvoice = async () => {
-      const data = await getLocalInvoice(invoiceId);
-      if (data) {
-        setInvoice(data.invoice);
-        setItems(data.items);
+      // First try to get from local IndexedDB
+      const localData = await getLocalInvoice(invoiceId);
+      if (localData) {
+        setInvoice(localData.invoice);
+        setItems(localData.items);
+        setLoading(false);
+        return;
       }
+      
+      // If not found locally, try fetching from server API
+      try {
+        // Try the invoice endpoint first, then fall back to admin endpoint
+        let response = await fetch(`/api/invoice/${invoiceId}`);
+        
+        // If not authorized or not found, try admin endpoint (for admin users)
+        if (!response.ok) {
+          response = await fetch(`/api/admin/invoices?id=${invoiceId}`);
+        }
+        
+        if (response.ok) {
+          const serverData = await response.json();
+          if (serverData && serverData.invoice) {
+            // Map server data to local format
+            const serverInvoice: LocalInvoice = {
+              id: serverData.invoice.id,
+              invoiceNo: serverData.invoice.invoiceNo,
+              cashierId: serverData.invoice.cashierId,
+              cashierName: serverData.invoice.cashierName || 'Unknown',
+              deviceId: serverData.invoice.deviceId || 'server',
+              subtotalUSDcents: serverData.invoice.subtotalUSDcents,
+              totalUSDcents: serverData.invoice.totalUSDcents,
+              paidUSDcents: serverData.invoice.paidUSDcents,
+              changeUSDcents: serverData.invoice.changeUSDcents,
+              exchangeRateKHR: serverData.invoice.exchangeRateKHR,
+              subtotalKHR: serverData.invoice.subtotalKHR,
+              totalKHR: serverData.invoice.totalKHR,
+              paidKHR: serverData.invoice.paidKHR,
+              changeKHR: serverData.invoice.changeKHR,
+              paymentMethod: serverData.invoice.paymentMethod || 'cash',
+              createdAt: serverData.invoice.createdAt,
+              syncStatus: 'synced',
+            };
+            
+            const serverItems: LocalInvoiceItem[] = (serverData.items || []).map((item: any) => ({
+              id: item.id,
+              invoiceId: item.invoiceId,
+              productId: item.productId,
+              nameSnapshot: item.nameSnapshot,
+              priceUSDcentsSnapshot: item.priceUSDcentsSnapshot,
+              qty: item.qty,
+              lineTotalUSDcents: item.lineTotalUSDcents,
+              lineTotalKHR: item.lineTotalKHR,
+            }));
+            
+            setInvoice(serverInvoice);
+            setItems(serverItems);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching invoice from server:', error);
+      }
+      
       setLoading(false);
     };
     
