@@ -1,4 +1,4 @@
-const CACHE_NAME = 'coffee-pos-v1';
+const CACHE_NAME = 'coffee-pos-v2';
 const STATIC_ASSETS = [
   '/',
   '/login',
@@ -78,9 +78,19 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          // Return cached page or fallback
+          // Return cached page or appropriate fallback
           return caches.match(request)
-            .then((cached) => cached || caches.match('/'));
+            .then((cached) => {
+              if (cached) return cached;
+              
+              // Fallback for invoice pages - redirect to POS (invoices are viewed inline when offline)
+              if (url.pathname.startsWith('/invoice/')) {
+                return caches.match('/pos');
+              }
+              
+              // Default fallback to home
+              return caches.match('/');
+            });
         })
     );
     return;

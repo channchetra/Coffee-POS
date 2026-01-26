@@ -3,8 +3,9 @@ import { CartItem } from './CartItem';
 import { HeldCartsModal } from './HeldCartsModal';
 import { useCartStore, useAuthStore, useHeldCartsStore, useLanguageStore } from '../../lib/store';
 import { formatUSD, formatKHR, usdToKHR } from '../../lib/utils/currency';
-import { saveHeldCart, getHeldCarts, saveLocalInvoice, generateInvoiceNo, getOrCreateDeviceId, type HeldCart, type LocalInvoice, type LocalInvoiceItem, type PaymentMethod } from '../../lib/client/db';
+import { saveHeldCart, getHeldCarts, saveLocalInvoice, generateInvoiceNo, getOrCreateDeviceId, getLocalInvoice, type HeldCart, type LocalInvoice, type LocalInvoiceItem, type PaymentMethod } from '../../lib/client/db';
 import { syncToServer } from '../../lib/client/sync';
+import { formatDateTime } from '../../lib/utils/format';
 import { t } from '../../i18n';
 import { Button } from '../ui/Button';
 
@@ -27,6 +28,8 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [completedInvoice, setCompletedInvoice] = useState<LocalInvoice | null>(null);
+  const [completedInvoiceItems, setCompletedInvoiceItems] = useState<LocalInvoiceItem[]>([]);
+  const [showInlineInvoice, setShowInlineInvoice] = useState(false);
   
   // Load held carts on mount to show badge count
   useEffect(() => {
@@ -161,6 +164,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
       }
       
       setCompletedInvoice(invoice);
+      setCompletedInvoiceItems(invoiceItems); // Store items for offline invoice view
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed');
     } finally {
@@ -170,19 +174,48 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   
   const handleNewSale = () => {
     setCompletedInvoice(null);
+    setCompletedInvoiceItems([]);
+    setShowInlineInvoice(false);
     setShowPayment(false);
     setPaidAmountKHR('');
     setPaymentMethod('cash');
   };
   
-  const handleViewInvoice = () => {
-    if (completedInvoice) {
+  const handleViewInvoice = async () => {
+    if (!completedInvoice) return;
+    
+    // If offline, show inline invoice view
+    if (!navigator.onLine) {
+      // Load the invoice items from local DB if not already loaded
+      if (completedInvoiceItems.length === 0) {
+        const localData = await getLocalInvoice(completedInvoice.id);
+        if (localData) {
+          setCompletedInvoiceItems(localData.items);
+        }
+      }
+      setShowInlineInvoice(true);
+    } else {
+      // Online - open in new tab as before
       window.open(`/invoice/${completedInvoice.id}`, '_blank');
     }
   };
   
-  const handlePrintInvoice = () => {
-    if (completedInvoice) {
+  const handlePrintInvoice = async () => {
+    if (!completedInvoice) return;
+    
+    // If offline, show inline invoice and trigger print
+    if (!navigator.onLine) {
+      if (completedInvoiceItems.length === 0) {
+        const localData = await getLocalInvoice(completedInvoice.id);
+        if (localData) {
+          setCompletedInvoiceItems(localData.items);
+        }
+      }
+      setShowInlineInvoice(true);
+      // Delay print to allow render
+      setTimeout(() => window.print(), 300);
+    } else {
+      // Online - open in new tab and print
       const printWindow = window.open(`/invoice/${completedInvoice.id}`, '_blank');
       if (printWindow) {
         printWindow.onload = () => {
@@ -191,6 +224,114 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
       }
     }
   };
+  
+  const handleBackFromInvoice = () => {
+    setShowInlineInvoice(false);
+  };
+  
+  // Inline Invoice View (for offline viewing/printing)
+  if (completedInvoice && showInlineInvoice) {
+    return (
+      <div className="flex flex-col h-full bg-white print:bg-white print-area">
+        {/* Header - hidden when printing */}
+        <div className="no-print p-3 border-b flex items-center justify-between bg-gray-50">
+          <Button variant="outline" onClick={handleBackFromInvoice} className="text-sm">
+            ← {t(language, 'common.back')}
+          </Button>
+          <Button variant="primary" onClick={() => window.print()} className="text-sm">
+            {t(language, 'invoice.print')}
+          </Button>
+        </div>
+        
+        {/* Invoice Content - optimized for receipt printing */}
+        <div className="flex-1 overflow-auto p-4 print:p-0 print:overflow-visible print-receipt">
+          <div className="max-w-[80mm] mx-auto bg-white print:max-w-full">
+            {/* Shop Header */}
+            <div className="text-center mb-4">
+              <h1 className="text-xl font-bold">☕ Coffee POS</h1>
+              <p className="text-sm text-gray-600">{t(language, 'invoice.receipt')}</p>
+            </div>
+            
+            {/* Invoice Info */}
+            <div className="text-sm mb-4 space-y-1">
+              <div className="flex justify-between">
+                <span className="text-gray-600">{t(language, 'invoice.invoiceNo')}:</span>
+                <span className="font-mono font-bold">{completedInvoice.invoiceNo}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">{t(language, 'invoice.date')}:</span>
+                <span>{formatDateTime(completedInvoice.createdAt, language)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">{t(language, 'invoice.cashier')}:</span>
+                <span>{completedInvoice.cashierName}</span>
+              </div>
+              {completedInvoice.paymentMethod === 'bank' && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">{language === 'km' ? 'វិធីបង់ប្រាក់' : 'Payment'}:</span>
+                  <span className="text-red-600 font-medium">{language === 'km' ? 'ធនាគារ' : 'Bank'}</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Items */}
+            <div className="border-t border-b border-dashed py-3 mb-3">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-600">
+                    <th className="text-left pb-2">{t(language, 'invoice.item')}</th>
+                    <th className="text-center pb-2">{t(language, 'invoice.qty')}</th>
+                    <th className="text-right pb-2">{t(language, 'invoice.amount')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {completedInvoiceItems.map((item) => (
+                    <tr key={item.id}>
+                      <td className="py-1">{item.nameSnapshot.split(' / ')[language === 'km' ? 1 : 0]}</td>
+                      <td className="text-center py-1">{item.qty}</td>
+                      <td className="text-right py-1">{formatKHR(item.lineTotalKHR)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Totals */}
+            <div className="text-sm space-y-1 mb-4">
+              <div className="flex justify-between">
+                <span>{t(language, 'invoice.subtotal')}:</span>
+                <span>{formatKHR(completedInvoice.subtotalKHR)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-base">
+                <span>{t(language, 'invoice.total')}:</span>
+                <span>{formatKHR(completedInvoice.totalKHR)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>{t(language, 'invoice.paid')}:</span>
+                <span>{formatKHR(completedInvoice.paidKHR)}</span>
+              </div>
+              {completedInvoice.paymentMethod !== 'bank' && (
+                <div className="flex justify-between font-bold text-primary-600">
+                  <span>{t(language, 'invoice.change')}:</span>
+                  <span>{formatKHR(completedInvoice.changeKHR)}</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Footer */}
+            <div className="text-center text-sm text-gray-500 border-t border-dashed pt-3">
+              <p>{t(language, 'invoice.thankYou')}</p>
+              {!navigator.onLine && (
+                <p className="mt-2 text-xs text-orange-600">
+                  {language === 'km' ? '(គ្មានអ៊ីនធើណិត - មើលក្នុងម៉ាស៊ីន)' : '(Offline - Local View)'}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   // Payment Success Screen (inline in cart area)
   if (completedInvoice) {
