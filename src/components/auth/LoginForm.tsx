@@ -16,6 +16,7 @@ export function LoginForm() {
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   
   // Get redirect URL from query params or localStorage
   const getRedirectUrl = (userRole: string) => {
@@ -58,6 +59,9 @@ export function LoginForm() {
   };
   
   useEffect(() => {
+    // Set mounted for hydration safety
+    setMounted(true);
+    
     // Set initial online state
     setOnline(navigator.onLine);
     
@@ -119,9 +123,9 @@ export function LoginForm() {
         
         {/* Online/Offline indicator */}
         <div className="flex items-center justify-center gap-2 mb-6">
-          <span className={`status-dot ${isOnline ? 'status-online' : 'status-offline'}`} />
+          <span className={`status-dot ${mounted && isOnline ? 'status-online' : 'status-offline'}`} />
           <span className="text-sm text-gray-600">
-            {isOnline ? t(language, 'app.online') : t(language, 'app.offline')}
+            {mounted ? (isOnline ? t(language, 'app.online') : t(language, 'app.offline')) : t(language, 'app.offline')}
           </span>
         </div>
         
@@ -170,12 +174,12 @@ export function LoginForm() {
             loading={loading}
             className="w-full"
           >
-            {isOnline ? t(language, 'auth.loginButton') : t(language, 'auth.loginOffline')}
+            {mounted && isOnline ? t(language, 'auth.loginButton') : t(language, 'auth.loginOffline')}
           </Button>
         </form>
         
         <p className="mt-6 text-center text-sm text-gray-500">
-          {isOnline 
+          {mounted && isOnline 
             ? (rememberMe ? 'Stay logged in for 30 days' : 'Session expires when browser closes')
             : 'Offline mode - using cached credentials'}
         </p>

@@ -261,11 +261,15 @@ export async function getCachedUser(username: string): Promise<CachedUser | unde
   return db.cachedUsers.where('username').equals(username).first();
 }
 
-// Generate invoice number
+// Generate invoice number with device ID to prevent duplicates across offline devices
 export async function generateInvoiceNo(): Promise<string> {
   const today = new Date();
   const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+  const deviceId = await getOrCreateDeviceId();
+  // Use first 4 chars of device ID as device prefix
+  const devicePrefix = deviceId.replace(/-/g, '').substring(0, 4).toUpperCase();
   const count = await db.invoices.where('createdAt').startsWith(today.toISOString().split('T')[0]).count();
   const seq = (count + 1).toString().padStart(4, '0');
-  return `INV-${dateStr}-${seq}`;
+  // Format: INV-YYYYMMDD-XXXX-0001 (XXXX = device prefix)
+  return `INV-${dateStr}-${devicePrefix}-${seq}`;
 }

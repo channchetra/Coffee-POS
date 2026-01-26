@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthStore, useLanguageStore } from '../../lib/store';
 import { LanguageToggle } from './LanguageToggle';
 import { SyncStatus } from './SyncStatus';
@@ -12,6 +12,12 @@ interface HeaderProps {
 export function Header({ showLogout = true, showSync = true }: HeaderProps) {
   const { user, setUser, isOnline } = useAuthStore();
   const { language } = useLanguageStore();
+  const [mounted, setMounted] = useState(false);
+  
+  // Avoid hydration mismatch for online/offline status
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const handleLogout = async () => {
     try {
@@ -45,9 +51,9 @@ export function Header({ showLogout = true, showSync = true }: HeaderProps) {
         <div className="flex items-center gap-2 md:gap-3 overflow-x-auto scrollbar-hide">
           {/* Online/Offline indicator - icon only on mobile */}
           <div className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-4 py-2 bg-white/50 backdrop-blur-sm rounded-full border border-white/30 flex-shrink-0">
-            <span className={`status-dot ${isOnline ? 'status-online' : 'status-offline'}`} />
+            <span className={`status-dot ${mounted && isOnline ? 'status-online' : 'status-offline'}`} />
             <span className="hidden md:inline text-sm font-medium text-gray-600">
-              {isOnline ? t(language, 'app.online') : t(language, 'app.offline')}
+              {mounted ? (isOnline ? t(language, 'app.online') : t(language, 'app.offline')) : t(language, 'app.offline')}
             </span>
           </div>
           
