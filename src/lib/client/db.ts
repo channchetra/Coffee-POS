@@ -196,6 +196,9 @@ export async function deleteHeldCart(id: string): Promise<void> {
 
 // Invoices
 export async function saveLocalInvoice(invoice: LocalInvoice, items: LocalInvoiceItem[]): Promise<void> {
+  // Ensure DB is open
+  await db.open();
+  
   await db.transaction('rw', db.invoices, db.invoiceItems, db.outboxOps, async () => {
     await db.invoices.put(invoice);
     await db.invoiceItems.bulkPut(items);
@@ -213,6 +216,9 @@ export async function saveLocalInvoice(invoice: LocalInvoice, items: LocalInvoic
 }
 
 export async function getLocalInvoice(id: string): Promise<{ invoice: LocalInvoice; items: LocalInvoiceItem[] } | null> {
+  // Wait for DB to be ready (important for new tab scenarios)
+  await db.open();
+  
   const invoice = await db.invoices.get(id);
   if (!invoice) return null;
   const items = await db.invoiceItems.where('invoiceId').equals(id).toArray();

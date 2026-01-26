@@ -20,66 +20,74 @@ export function InvoiceView({ invoiceId }: InvoiceViewProps) {
   
   useEffect(() => {
     const loadInvoice = async () => {
-      // First try to get from local IndexedDB
-      const localData = await getLocalInvoice(invoiceId);
-      if (localData) {
-        setInvoice(localData.invoice);
-        setItems(localData.items);
-        setLoading(false);
-        return;
+      // First try to get from local IndexedDB (works offline)
+      try {
+        const localData = await getLocalInvoice(invoiceId);
+        if (localData) {
+          setInvoice(localData.invoice);
+          setItems(localData.items);
+          setLoading(false);
+          return;
+        }
+      } catch (localError) {
+        console.error('Error loading from local DB:', localError);
       }
       
-      // If not found locally, try fetching from server API
-      try {
-        // Try the invoice endpoint first, then fall back to admin endpoint
-        let response = await fetch(`/api/invoice/${invoiceId}`);
-        
-        // If not authorized or not found, try admin endpoint (for admin users)
-        if (!response.ok) {
-          response = await fetch(`/api/admin/invoices?id=${invoiceId}`);
-        }
-        
-        if (response.ok) {
-          const serverData = await response.json();
-          if (serverData && serverData.invoice) {
-            // Map server data to local format
-            const serverInvoice: LocalInvoice = {
-              id: serverData.invoice.id,
-              invoiceNo: serverData.invoice.invoiceNo,
-              cashierId: serverData.invoice.cashierId,
-              cashierName: serverData.invoice.cashierName || 'Unknown',
-              deviceId: serverData.invoice.deviceId || 'server',
-              subtotalUSDcents: serverData.invoice.subtotalUSDcents,
-              totalUSDcents: serverData.invoice.totalUSDcents,
-              paidUSDcents: serverData.invoice.paidUSDcents,
-              changeUSDcents: serverData.invoice.changeUSDcents,
-              exchangeRateKHR: serverData.invoice.exchangeRateKHR,
-              subtotalKHR: serverData.invoice.subtotalKHR,
-              totalKHR: serverData.invoice.totalKHR,
-              paidKHR: serverData.invoice.paidKHR,
-              changeKHR: serverData.invoice.changeKHR,
-              paymentMethod: serverData.invoice.paymentMethod || 'cash',
-              createdAt: serverData.invoice.createdAt,
-              syncStatus: 'synced',
-            };
-            
-            const serverItems: LocalInvoiceItem[] = (serverData.items || []).map((item: any) => ({
-              id: item.id,
-              invoiceId: item.invoiceId,
-              productId: item.productId,
-              nameSnapshot: item.nameSnapshot,
-              priceUSDcentsSnapshot: item.priceUSDcentsSnapshot,
-              qty: item.qty,
-              lineTotalUSDcents: item.lineTotalUSDcents,
-              lineTotalKHR: item.lineTotalKHR,
-            }));
-            
-            setInvoice(serverInvoice);
-            setItems(serverItems);
+      // If not found locally and we're online, try fetching from server API
+      if (navigator.onLine) {
+        try {
+          // Try the invoice endpoint first, then fall back to admin endpoint
+          let response = await fetch(`/api/invoice/${invoiceId}`);
+          
+          // If not authorized or not found, try admin endpoint (for admin users)
+          if (!response.ok) {
+            response = await fetch(`/api/admin/invoices?id=${invoiceId}`);
           }
+          
+          if (response.ok) {
+            const serverData = await response.json();
+            if (serverData && serverData.invoice) {
+              // Map server data to local format
+              const serverInvoice: LocalInvoice = {
+                id: serverData.invoice.id,
+                invoiceNo: serverData.invoice.invoiceNo,
+                cashierId: serverData.invoice.cashierId,
+                cashierName: serverData.invoice.cashierName || 'Unknown',
+                deviceId: serverData.invoice.deviceId || 'server',
+                subtotalUSDcents: serverData.invoice.subtotalUSDcents,
+                totalUSDcents: serverData.invoice.totalUSDcents,
+                paidUSDcents: serverData.invoice.paidUSDcents,
+                changeUSDcents: serverData.invoice.changeUSDcents,
+                exchangeRateKHR: serverData.invoice.exchangeRateKHR,
+                subtotalKHR: serverData.invoice.subtotalKHR,
+                totalKHR: serverData.invoice.totalKHR,
+                paidKHR: serverData.invoice.paidKHR,
+                changeKHR: serverData.invoice.changeKHR,
+                paymentMethod: serverData.invoice.paymentMethod || 'cash',
+                createdAt: serverData.invoice.createdAt,
+                syncStatus: 'synced',
+              };
+              
+              const serverItems: LocalInvoiceItem[] = (serverData.items || []).map((item: any) => ({
+                id: item.id,
+                invoiceId: item.invoiceId,
+                productId: item.productId,
+                nameSnapshot: item.nameSnapshot,
+                priceUSDcentsSnapshot: item.priceUSDcentsSnapshot,
+                qty: item.qty,
+                lineTotalUSDcents: item.lineTotalUSDcents,
+                lineTotalKHR: item.lineTotalKHR,
+              }));
+              
+              setInvoice(serverInvoice);
+              setItems(serverItems);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching invoice from server:', error);
         }
-      } catch (error) {
-        console.error('Error fetching invoice from server:', error);
       }
       
       setLoading(false);
@@ -101,12 +109,21 @@ export function InvoiceView({ invoiceId }: InvoiceViewProps) {
   }
   
   if (!invoice) {
+    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+    
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-gray-400">
+      <div className="flex flex-col items-center justify-center min-h-screen text-gray-400 p-4">
         <svg className="w-20 h-20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
-        <p className="text-xl">Invoice not found</p>
+        <p className="text-xl mb-2">{language === 'km' ? 'រកមិនឃើញវិក្កយបត្រ' : 'Invoice not found'}</p>
+        {isOffline && (
+          <p className="text-sm text-gray-500 text-center mb-4">
+            {language === 'km' 
+              ? 'អ្នកស្ថិតក្នុងស្ថានភាពគ្មានអ៊ីនធើណិត។ វិក្កយបត្រនេះអាចនៅលើម៉ាស៊ីនមេ។'
+              : 'You are offline. This invoice may be on the server.'}
+          </p>
+        )}
         <Button variant="primary" onClick={() => window.location.href = '/pos'} className="mt-4">
           {t(language, 'common.back')}
         </Button>
