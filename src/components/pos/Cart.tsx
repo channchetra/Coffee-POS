@@ -232,25 +232,47 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   // Inline Invoice View (for offline viewing/printing)
   if (completedInvoice && showInlineInvoice) {
     return (
-      <div className="flex flex-col h-full bg-white print:bg-white print-area">
-        {/* Header - hidden when printing */}
-        <div className="no-print p-3 border-b flex items-center justify-between bg-gray-50">
-          <Button variant="outline" onClick={handleBackFromInvoice} className="text-sm">
-            ← {t(language, 'common.back')}
-          </Button>
-          <Button variant="primary" onClick={() => window.print()} className="text-sm">
-            {t(language, 'invoice.print')}
-          </Button>
-        </div>
-        
-        {/* Invoice Content - optimized for receipt printing */}
-        <div className="flex-1 overflow-auto p-4 print:p-0 print:overflow-visible print-receipt">
-          <div className="max-w-[80mm] mx-auto bg-white print:max-w-full">
-            {/* Shop Header */}
-            <div className="text-center mb-4">
-              <h1 className="text-xl font-bold">☕ Coffee POS</h1>
-              <p className="text-sm text-gray-600">{t(language, 'invoice.receipt')}</p>
-            </div>
+      <>
+        {/* Print-only styles for offline invoice */}
+        <style>{`
+          @media print {
+            body * { visibility: hidden !important; }
+            #offline-invoice-print, #offline-invoice-print * { visibility: visible !important; }
+            #offline-invoice-print {
+              position: fixed !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 80mm !important;
+              padding: 5mm !important;
+              background: white !important;
+              z-index: 99999 !important;
+            }
+          }
+        `}</style>
+        <div className="flex flex-col h-full bg-white">
+          {/* Header - hidden when printing */}
+          <div className="no-print p-3 border-b flex items-center justify-between bg-gray-50">
+            <Button variant="outline" onClick={handleBackFromInvoice} className="text-sm">
+              ← {t(language, 'common.back')}
+            </Button>
+            <Button variant="primary" onClick={() => window.print()} className="text-sm">
+              {t(language, 'invoice.print')}
+            </Button>
+          </div>
+          
+          {/* Invoice Content - optimized for receipt printing */}
+          <div className="flex-1 overflow-auto p-4">
+            <div id="offline-invoice-print" className="max-w-[80mm] mx-auto bg-white">
+              {/* Shop Header with App Icon */}
+              <div className="text-center mb-4">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <svg className="w-8 h-8 text-primary-600" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2 21V19H20V21H2ZM20 8V5H22V8C22 9.1 21.55 10.1 20.83 10.83C20.1 11.55 19.1 12 18 12H17V15C17 16.1 16.55 17.1 15.83 17.83C15.1 18.55 14.1 19 13 19H7C5.9 19 4.9 18.55 4.17 17.83C3.45 17.1 3 16.1 3 15V6H17V8H20ZM7 8H5V15C5 15.55 5.22 16.05 5.59 16.41C5.95 16.78 6.45 17 7 17H13C13.55 17 14.05 16.78 14.41 16.41C14.78 16.05 15 15.55 15 15V8H7Z"/>
+                  </svg>
+                  <h1 className="text-xl font-bold text-gray-900">Coffee POS</h1>
+                </div>
+                <p className="text-sm text-gray-600">{t(language, 'invoice.receipt')}</p>
+              </div>
             
             {/* Invoice Info */}
             <div className="text-sm mb-4 space-y-1">
@@ -322,7 +344,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
             <div className="text-center text-sm text-gray-500 border-t border-dashed pt-3">
               <p>{t(language, 'invoice.thankYou')}</p>
               {!navigator.onLine && (
-                <p className="mt-2 text-xs text-orange-600">
+                <p className="mt-2 text-xs text-orange-600 no-print">
                   {language === 'km' ? '(គ្មានអ៊ីនធើណិត - មើលក្នុងម៉ាស៊ីន)' : '(Offline - Local View)'}
                 </p>
               )}
@@ -330,6 +352,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
           </div>
         </div>
       </div>
+      </>
     );
   }
   
