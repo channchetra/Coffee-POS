@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getSetting, setSetting, getSessionByToken } from '../../lib/db/server';
+import { getSetting, setSetting, getSessionByToken, recalculateAllProductPrices } from '../../lib/db/server';
 
 export const GET: APIRoute = async ({ cookies }) => {
   try {
@@ -65,6 +65,8 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     // Update exchange rate if provided
     if (body.defaultExchangeRateKHR !== undefined) {
       setSetting('defaultExchangeRateKHR', body.defaultExchangeRateKHR);
+      // Recalculate all product USD prices based on new exchange rate
+      recalculateAllProductPrices(body.defaultExchangeRateKHR);
     }
     
     // Update auto print setting if provided

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CartItem } from './CartItem';
 import { HeldCartsModal } from './HeldCartsModal';
 import { useCartStore, useAuthStore, useHeldCartsStore, useLanguageStore } from '../../lib/store';
@@ -16,7 +16,7 @@ interface CartProps {
 export function Cart({ onClose, showCloseButton }: CartProps) {
   const { items, getSubtotal, clearCart, setCart } = useCartStore();
   const { user, exchangeRateKHR } = useAuthStore();
-  const { setHeldCarts, addHeldCart } = useHeldCartsStore();
+  const { heldCarts, setHeldCarts, addHeldCart } = useHeldCartsStore();
   const { language } = useLanguageStore();
   const [showPayment, setShowPayment] = useState(false);
   const [showHeldCarts, setShowHeldCarts] = useState(false);
@@ -27,6 +27,15 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [completedInvoice, setCompletedInvoice] = useState<LocalInvoice | null>(null);
+  
+  // Load held carts on mount to show badge count
+  useEffect(() => {
+    const loadHeldCarts = async () => {
+      const carts = await getHeldCarts();
+      setHeldCarts(carts);
+    };
+    loadHeldCarts();
+  }, [setHeldCarts]);
   
   const subtotal = getSubtotal(); // USD cents for compatibility
   // Calculate KHR total directly from items' priceKHR (source of truth)
@@ -422,12 +431,17 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
           <div className="flex items-center gap-2">
             <button
               onClick={handleShowHeldCarts}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/50 rounded-xl transition-colors"
+              className="relative flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/50 rounded-xl transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
               <span className="hidden sm:inline">{t(language, 'pos.heldCarts')}</span>
+              {heldCarts.length > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[20px] h-5 flex items-center justify-center px-1.5 text-xs font-bold text-white bg-red-500 rounded-full shadow-sm">
+                  {heldCarts.length}
+                </span>
+              )}
             </button>
             {showCloseButton && (
               <button

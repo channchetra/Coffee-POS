@@ -1,13 +1,26 @@
-import { Database } from 'bun:sqlite';
 import { join } from 'path';
+
+let DatabaseClass: any = null;
+// Only attempt to import `bun:sqlite` when running under Bun. Use top-level
+// conditional dynamic import so Node's ESM loader never sees the `bun:` scheme
+// during module evaluation.
+if (typeof Bun !== 'undefined') {
+  const mod = await import('bun:sqlite');
+  DatabaseClass = mod.Database;
+}
 
 const DB_PATH = join(process.cwd(), 'data', 'coffee-pos.db');
 
-let db: Database | null = null;
+let db: any = null;
 
-export function getDb(): Database {
+export function getDb(): any {
   if (!db) {
-    db = new Database(DB_PATH);
+    if (!DatabaseClass) {
+      throw new Error(
+        'bun:sqlite is not available. Run the app with Bun, or install/configure a Node-compatible sqlite driver and update src/lib/db/server.ts.'
+      );
+    }
+    db = new DatabaseClass(DB_PATH);
     db.exec('PRAGMA journal_mode = WAL;');
     db.exec('PRAGMA foreign_keys = ON;');
   }
@@ -132,6 +145,18 @@ export function updateProduct(id: string, nameEn: string, nameKm: string, catego
 export function deleteProduct(id: string) {
   const db = getDb();
   db.query('DELETE FROM products WHERE id = ?').run(id);
+}
+
+// Recalculate all product USD prices based on new exchange rate
+export function recalculateAllProductPrices(exchangeRate: number) {
+  const db = getDb();
+  // Update all products: calculate priceUSDcents from priceKHR using the new rate
+  // Formula: priceUSDcents = (priceKHR / exchangeRate) * 100
+  db.query(`
+    UPDATE products 
+    SET priceUSDcents = CAST(ROUND((priceKHR * 100.0) / ?) AS INTEGER),
+        updatedAt = datetime('now')
+  `).run(exchangeRate);
 }
 
 // Settings queries

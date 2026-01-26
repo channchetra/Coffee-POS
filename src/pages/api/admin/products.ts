@@ -5,7 +5,8 @@ import {
   createProduct, 
   updateProduct, 
   deleteProduct,
-  getSessionByToken 
+  getSessionByToken,
+  getSetting
 } from '../../../lib/db/server';
 
 // Middleware to check admin
@@ -69,8 +70,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
     
-    // Calculate USD cents from KHR (for compatibility) - use standard rate of 4000
-    const calculatedUSDcents = priceUSDcents ?? Math.round((priceKHR / 4000) * 100);
+    // Get exchange rate from settings
+    const exchangeRate = getSetting('defaultExchangeRateKHR') || 4000;
+    // Calculate USD cents from KHR (for compatibility)
+    const calculatedUSDcents = priceUSDcents ?? Math.round((priceKHR / exchangeRate) * 100);
     
     const id = crypto.randomUUID();
     createProduct(id, nameEn, nameKm, category, calculatedUSDcents, priceKHR, imageUrl || '');
@@ -113,8 +116,10 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
       });
     }
     
-    // Calculate USD cents from KHR (for compatibility) - use standard rate of 4000
-    const calculatedUSDcents = priceUSDcents ?? Math.round((priceKHR / 4000) * 100);
+    // Get exchange rate from settings
+    const exchangeRate = getSetting('defaultExchangeRateKHR') || 4000;
+    // Calculate USD cents from KHR (for compatibility)
+    const calculatedUSDcents = priceUSDcents ?? Math.round((priceKHR / exchangeRate) * 100);
     
     updateProduct(id, nameEn, nameKm, category, calculatedUSDcents, priceKHR, imageUrl || '');
     

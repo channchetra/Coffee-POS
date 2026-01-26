@@ -43,15 +43,29 @@ export function ProductManager() {
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Default exchange rate for display
-  const displayExchangeRate = 4000;
+  // Exchange rate from settings (fetched on mount)
+  const [displayExchangeRate, setDisplayExchangeRate] = useState(4000);
   
   useEffect(() => {
     fetchData();
   }, []);
   
   const fetchData = async () => {
-    await Promise.all([fetchProducts(), fetchCategories()]);
+    await Promise.all([fetchProducts(), fetchCategories(), fetchExchangeRate()]);
+  };
+  
+  const fetchExchangeRate = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.defaultExchangeRateKHR) {
+          setDisplayExchangeRate(data.defaultExchangeRateKHR);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching exchange rate:', err);
+    }
   };
   
   const fetchProducts = async () => {

@@ -73,6 +73,7 @@ export function Dashboard() {
   const [error, setError] = useState('');
   const [period, setPeriod] = useState<Period>('today');
   const [selectedCashier, setSelectedCashier] = useState<string>('');
+  const [mounted, setMounted] = useState(false);
   
   // Invoice states
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -80,6 +81,11 @@ export function Dashboard() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
+  
+  // Set mounted after hydration to avoid SSR mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const fetchStats = async (selectedPeriod: Period, cashierId?: string) => {
     setLoading(true);
@@ -152,6 +158,15 @@ export function Dashboard() {
     month: language === 'km' ? 'ខែនេះ' : 'This Month'
   };
   
+  // Show loading state before hydration completes to avoid SSR mismatch
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+  
   if (!isOnline) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-400">
@@ -195,23 +210,46 @@ export function Dashboard() {
           <label className="text-sm font-medium text-gray-600">
             {language === 'km' ? 'អ្នកគិតប្រាក់:' : 'Cashier:'}
           </label>
-          <select
-            value={selectedCashier}
-            onChange={(e) => setSelectedCashier(e.target.value)}
-            className="input py-2 px-4 min-w-[200px]"
-          >
-            <option value="">{language === 'km' ? 'ទាំងអស់' : 'All Cashiers'}</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.username} ({user.role})
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              {selectedCashier && users.find(u => u.id === selectedCashier) ? (
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold text-xs">
+                  {users.find(u => u.id === selectedCashier)?.username?.[0]?.toUpperCase() || 'U'}
+                </div>
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+            <select
+              value={selectedCashier}
+              onChange={(e) => setSelectedCashier(e.target.value)}
+              className="input py-2.5 pl-12 pr-10 min-w-[220px] appearance-none cursor-pointer"
+            >
+              <option value="">{language === 'km' ? 'ទាំងអស់' : 'All Cashiers'}</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.username} ({user.role})
+                </option>
+              ))}
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
           {selectedCashier && (
             <button
               onClick={() => setSelectedCashier('')}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+              className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-600 font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
               {language === 'km' ? 'សម្អាត' : 'Clear'}
             </button>
           )}
