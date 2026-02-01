@@ -10,7 +10,8 @@ interface Product {
   id: string;
   nameEn: string;
   nameKm: string;
-  category: string;
+  category: string; // Legacy single category (first category or comma-separated)
+  categories: string[]; // Multiple categories
   priceUSDcents: number;
   priceKHR: number;
   imageUrl: string;
@@ -34,7 +35,7 @@ export function ProductManager() {
   const [formData, setFormData] = useState({
     nameEn: '',
     nameKm: '',
-    category: '',
+    categories: [] as string[],
     priceKHR: '',
     imageUrl: ''
   });
@@ -97,7 +98,7 @@ export function ProductManager() {
     setFormData({ 
       nameEn: '',
       nameKm: '',
-      category: categories.length > 0 ? categories[0].slug : '', 
+      categories: categories.length > 0 ? [categories[0].slug] : [], 
       priceKHR: '', 
       imageUrl: '' 
     });
@@ -110,7 +111,7 @@ export function ProductManager() {
     setFormData({
       nameEn: product.nameEn,
       nameKm: product.nameKm,
-      category: product.category,
+      categories: product.categories || (product.category ? [product.category] : []),
       priceKHR: (product.priceKHR || 0).toString(),
       imageUrl: product.imageUrl || ''
     });
@@ -188,7 +189,7 @@ export function ProductManager() {
             id: editingProduct.id,
             nameEn: formData.nameEn,
             nameKm: formData.nameKm,
-            category: formData.category,
+            categories: formData.categories,
             priceKHR,
             priceUSDcents,
             imageUrl: formData.imageUrl
@@ -197,11 +198,7 @@ export function ProductManager() {
         
         if (!response.ok) throw new Error('Failed to update product');
         
-        setProducts(products.map(p => 
-          p.id === editingProduct.id 
-            ? { ...p, nameEn: formData.nameEn, nameKm: formData.nameKm, category: formData.category, priceUSDcents, priceKHR, imageUrl: formData.imageUrl }
-            : p
-        ));
+        await fetchProducts(); // Refetch to get updated categories
       } else {
         // Create
         const response = await fetch('/api/admin/products', {
@@ -210,7 +207,7 @@ export function ProductManager() {
           body: JSON.stringify({
             nameEn: formData.nameEn,
             nameKm: formData.nameKm,
-            category: formData.category,
+            categories: formData.categories,
             priceKHR,
             priceUSDcents,
             imageUrl: formData.imageUrl
@@ -219,8 +216,7 @@ export function ProductManager() {
         
         if (!response.ok) throw new Error('Failed to create product');
         
-        const data = await response.json();
-        setProducts([...products, data.product]);
+        await fetchProducts(); // Refetch to get new product with categories
       }
       
       setShowModal(false);
@@ -284,7 +280,13 @@ export function ProductManager() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <h3 className="font-semibold text-gray-900 text-sm truncate">{getProductName(product)}</h3>
-                  <p className="text-xs text-gray-500 capitalize truncate">{getCategoryName(product.category)}</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(product.categories && product.categories.length > 0 ? product.categories : [product.category]).map((slug, idx) => (
+                      <span key={idx} className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                        {getCategoryName(slug)}
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="font-bold text-primary-600 text-sm">{formatKHR(product.priceKHR || 0)}</p>
@@ -342,29 +344,45 @@ export function ProductManager() {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {t(language, 'admin.category')}
+              {language === 'km' ? 'ប្រភេទ (ជ្រើសរើសបានច្រើន)' : 'Categories (select multiple)'}
             </label>
-            <select
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="input"
-              required
-            >
-              {categories.length === 0 ? (
-                <option value="">{language === 'km' ? 'មិនមានប្រភេទ' : 'No categories available'}</option>
-              ) : (
-                categories.map((cat) => (
-                  <option key={cat.id} value={cat.slug}>
-                    {language === 'km' ? cat.nameKm : cat.nameEn}
-                  </option>
-                ))
-              )}
-            </select>
+            {categories.length === 0 ? (
+              <div className="input text-gray-400">
+                {language === 'km' ? 'មិនមានប្រភេទ' : 'No categories available'}
+              </div>
+            ) : (
+              <div className="border border-gray-300 rounded-xl p-3 max-h-48 overflow-y-auto space-y-2">
+                {categories.map((cat) => (
+                  <label key={cat.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.categories.includes(cat.slug)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData({ ...formData, categories: [...formData.categories, cat.slug] });
+                        } else {
+                          setFormData({ ...formData, categories: formData.categories.filter(s => s !== cat.slug) });
+                        }
+                      }}
+                      className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-gray-700">
+                      {language === 'km' ? cat.nameKm : cat.nameEn}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
             {categories.length === 0 && (
               <p className="mt-1 text-sm text-amber-600">
                 <a href="/admin/categories" className="underline hover:text-amber-700">
                   {language === 'km' ? 'បន្ថែមប្រភេទមុន' : 'Add categories first'}
                 </a>
+              </p>
+            )}
+            {formData.categories.length === 0 && categories.length > 0 && (
+              <p className="mt-1 text-sm text-amber-600">
+                {language === 'km' ? 'សូមជ្រើសរើសយ៉ាងហោចណាស់មួយប្រភេទ' : 'Please select at least one category'}
               </p>
             )}
           </div>

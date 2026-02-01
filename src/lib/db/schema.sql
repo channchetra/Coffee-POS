@@ -93,11 +93,22 @@ CREATE TABLE IF NOT EXISTS operations (
   appliedAt TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Product Categories junction table (for multiple categories per product)
+CREATE TABLE IF NOT EXISTS product_categories (
+  productId TEXT NOT NULL,
+  categorySlug TEXT NOT NULL,
+  PRIMARY KEY (productId, categorySlug),
+  FOREIGN KEY (productId) REFERENCES products(id) ON DELETE CASCADE,
+  FOREIGN KEY (categorySlug) REFERENCES categories(slug) ON DELETE CASCADE
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_invoices_cashierId ON invoices(cashierId);
 CREATE INDEX IF NOT EXISTS idx_invoices_createdAt ON invoices(createdAt);
 CREATE INDEX IF NOT EXISTS idx_invoices_deviceId ON invoices(deviceId);
 CREATE INDEX IF NOT EXISTS idx_invoice_items_invoiceId ON invoice_items(invoiceId);
+CREATE INDEX IF NOT EXISTS idx_product_categories_productId ON product_categories(productId);
+CREATE INDEX IF NOT EXISTS idx_product_categories_categorySlug ON product_categories(categorySlug);
 CREATE INDEX IF NOT EXISTS idx_operations_deviceId ON operations(deviceId);
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_userId ON sessions(userId);

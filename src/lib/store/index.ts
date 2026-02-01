@@ -140,6 +140,7 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
         product.nameEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.nameKm.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = !selectedCategory || 
+        (product.categories && product.categories.includes(selectedCategory)) ||
         product.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
@@ -152,6 +153,7 @@ interface HeldCartsState {
   setHeldCarts: (carts: HeldCart[]) => void;
   addHeldCart: (cart: HeldCart) => void;
   removeHeldCart: (id: string) => void;
+  updateHeldCartInStore: (cart: HeldCart) => void;
 }
 
 export const useHeldCartsStore = create<HeldCartsState>((set) => ({
@@ -160,6 +162,9 @@ export const useHeldCartsStore = create<HeldCartsState>((set) => ({
   addHeldCart: (cart) => set((state) => ({ heldCarts: [cart, ...state.heldCarts] })),
   removeHeldCart: (id) => set((state) => ({ 
     heldCarts: state.heldCarts.filter(c => c.id !== id) 
+  })),
+  updateHeldCartInStore: (cart) => set((state) => ({
+    heldCarts: state.heldCarts.map(c => c.id === cart.id ? cart : c)
   })),
 }));
 

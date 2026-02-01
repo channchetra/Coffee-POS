@@ -22,6 +22,7 @@ export interface Product {
   nameEn: string;
   nameKm: string;
   category: string;
+  categories?: string[]; // Multiple categories
   priceUSDcents: number;
   priceKHR: number;
   imageUrl: string;
@@ -183,6 +184,10 @@ export async function getCachedProducts(): Promise<Product[]> {
 
 // Held Carts
 export async function saveHeldCart(cart: HeldCart): Promise<void> {
+  await db.heldCarts.put(cart);
+}
+
+export async function updateHeldCart(cart: HeldCart): Promise<void> {
   await db.heldCarts.put(cart);
 }
 

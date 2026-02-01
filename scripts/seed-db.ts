@@ -40,33 +40,44 @@ async function seed() {
 
   // Create products (with translations)
   // priceKHR is the source of truth, priceUSDcents is calculated for compatibility
+  // Now supporting multiple categories per product
   const products = [
     // Coffee - prices in KHR (rounded to nice values)
-    { id: crypto.randomUUID(), nameEn: 'Espresso', nameKm: 'អេស្ប្រេសូ', category: 'coffee', priceKHR: 10000, priceUSDcents: 244, imageUrl: '/images/products/espresso.svg' },
-    { id: crypto.randomUUID(), nameEn: 'Americano', nameKm: 'អាមេរិកាណូ', category: 'coffee', priceKHR: 12000, priceUSDcents: 293, imageUrl: '/images/products/americano.svg' },
-    { id: crypto.randomUUID(), nameEn: 'Cappuccino', nameKm: 'កាពូឈីណូ', category: 'coffee', priceKHR: 14000, priceUSDcents: 341, imageUrl: '/images/products/cappuccino.svg' },
-    { id: crypto.randomUUID(), nameEn: 'Latte', nameKm: 'ឡាតេ', category: 'coffee', priceKHR: 16000, priceUSDcents: 390, imageUrl: '/images/products/latte.svg' },
-    { id: crypto.randomUUID(), nameEn: 'Mocha', nameKm: 'ម៉ូកា', category: 'coffee', priceKHR: 18000, priceUSDcents: 439, imageUrl: '/images/products/mocha.svg' },
-    { id: crypto.randomUUID(), nameEn: 'Iced Coffee', nameKm: 'កាហ្វេទឹកកក', category: 'coffee', priceKHR: 14000, priceUSDcents: 341, imageUrl: '/images/products/iced-coffee.svg' },
+    { id: crypto.randomUUID(), nameEn: 'Espresso', nameKm: 'អេស្ប្រេសូ', categories: ['coffee'], priceKHR: 10000, priceUSDcents: 244, imageUrl: '/images/products/espresso.svg' },
+    { id: crypto.randomUUID(), nameEn: 'Americano', nameKm: 'អាមេរិកាណូ', categories: ['coffee'], priceKHR: 12000, priceUSDcents: 293, imageUrl: '/images/products/americano.svg' },
+    { id: crypto.randomUUID(), nameEn: 'Cappuccino', nameKm: 'កាពូឈីណូ', categories: ['coffee'], priceKHR: 14000, priceUSDcents: 341, imageUrl: '/images/products/cappuccino.svg' },
+    { id: crypto.randomUUID(), nameEn: 'Latte', nameKm: 'ឡាតេ', categories: ['coffee'], priceKHR: 16000, priceUSDcents: 390, imageUrl: '/images/products/latte.svg' },
+    { id: crypto.randomUUID(), nameEn: 'Mocha', nameKm: 'ម៉ូកា', categories: ['coffee'], priceKHR: 18000, priceUSDcents: 439, imageUrl: '/images/products/mocha.svg' },
+    { id: crypto.randomUUID(), nameEn: 'Iced Coffee', nameKm: 'កាហ្វេទឹកកក', categories: ['coffee', 'soft_drink'], priceKHR: 14000, priceUSDcents: 341, imageUrl: '/images/products/iced-coffee.svg' }, // Multiple categories!
     
     // Wine
-    { id: crypto.randomUUID(), nameEn: 'Red Wine', nameKm: 'ស្រាក្រហម', category: 'wine', priceKHR: 32000, priceUSDcents: 780, imageUrl: '/images/products/red-wine.svg' },
-    { id: crypto.randomUUID(), nameEn: 'White Wine', nameKm: 'ស្រាស', category: 'wine', priceKHR: 30000, priceUSDcents: 732, imageUrl: '/images/products/white-wine.svg' },
-    { id: crypto.randomUUID(), nameEn: 'Rosé Wine', nameKm: 'ស្រាផ្កាឈូក', category: 'wine', priceKHR: 28000, priceUSDcents: 683, imageUrl: '/images/products/rose-wine.svg' },
+    { id: crypto.randomUUID(), nameEn: 'Red Wine', nameKm: 'ស្រាក្រហម', categories: ['wine'], priceKHR: 32000, priceUSDcents: 780, imageUrl: '/images/products/red-wine.svg' },
+    { id: crypto.randomUUID(), nameEn: 'White Wine', nameKm: 'ស្រាស', categories: ['wine'], priceKHR: 30000, priceUSDcents: 732, imageUrl: '/images/products/white-wine.svg' },
+    { id: crypto.randomUUID(), nameEn: 'Rosé Wine', nameKm: 'ស្រាផ្កាឈូក', categories: ['wine'], priceKHR: 28000, priceUSDcents: 683, imageUrl: '/images/products/rose-wine.svg' },
     
     // Soft Drinks
-    { id: crypto.randomUUID(), nameEn: 'Cola', nameKm: 'កូកា កូឡា', category: 'soft_drink', priceKHR: 6000, priceUSDcents: 146, imageUrl: '/images/products/cola.svg' },
-    { id: crypto.randomUUID(), nameEn: 'Lemonade', nameKm: 'ទឹកក្រូចឆ្មារ', category: 'soft_drink', priceKHR: 8000, priceUSDcents: 195, imageUrl: '/images/products/lemonade.svg' },
-    { id: crypto.randomUUID(), nameEn: 'Orange Juice', nameKm: 'ទឹកក្រូចពោធិ៍សាត់', category: 'soft_drink', priceKHR: 10000, priceUSDcents: 244, imageUrl: '/images/products/orange-juice.svg' },
-    { id: crypto.randomUUID(), nameEn: 'Sparkling Water', nameKm: 'ទឹកសូដា', category: 'soft_drink', priceKHR: 6000, priceUSDcents: 146, imageUrl: '/images/products/sparkling-water.svg' },
-    { id: crypto.randomUUID(), nameEn: 'Iced Tea', nameKm: 'តែទឹកកក', category: 'soft_drink', priceKHR: 8000, priceUSDcents: 195, imageUrl: '/images/products/iced-tea.svg' },
+    { id: crypto.randomUUID(), nameEn: 'Cola', nameKm: 'កូកា កូឡា', categories: ['soft_drink'], priceKHR: 6000, priceUSDcents: 146, imageUrl: '/images/products/cola.svg' },
+    { id: crypto.randomUUID(), nameEn: 'Lemonade', nameKm: 'ទឹកក្រូចឆ្មារ', categories: ['soft_drink'], priceKHR: 8000, priceUSDcents: 195, imageUrl: '/images/products/lemonade.svg' },
+    { id: crypto.randomUUID(), nameEn: 'Orange Juice', nameKm: 'ទឹកក្រូចពោធិ៍សាត់', categories: ['soft_drink'], priceKHR: 10000, priceUSDcents: 244, imageUrl: '/images/products/orange-juice.svg' },
+    { id: crypto.randomUUID(), nameEn: 'Sparkling Water', nameKm: 'ទឹកសូដា', categories: ['soft_drink'], priceKHR: 6000, priceUSDcents: 146, imageUrl: '/images/products/sparkling-water.svg' },
+    { id: crypto.randomUUID(), nameEn: 'Iced Tea', nameKm: 'តែទឹកកក', categories: ['soft_drink'], priceKHR: 8000, priceUSDcents: 195, imageUrl: '/images/products/iced-tea.svg' },
   ];
 
   for (const product of products) {
+    const category = product.categories[0]; // First category for legacy field
     db.query('INSERT OR REPLACE INTO products (id, nameEn, nameKm, category, priceUSDcents, priceKHR, imageUrl) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-      product.id, product.nameEn, product.nameKm, product.category, product.priceUSDcents, product.priceKHR, product.imageUrl
+      product.id, product.nameEn, product.nameKm, category, product.priceUSDcents, product.priceKHR, product.imageUrl
     );
-    console.log(`✓ Created product: ${product.nameEn} (${product.nameKm}) - ៛${product.priceKHR.toLocaleString()}`);
+    
+    // Insert into junction table for each category
+    for (const cat of product.categories) {
+      db.query('INSERT OR REPLACE INTO product_categories (productId, categorySlug) VALUES (?, ?)').run(
+        product.id, cat
+      );
+    }
+    
+    const categoryDisplay = product.categories.length > 1 ? ` [${product.categories.join(', ')}]` : '';
+    console.log(`✓ Created product: ${product.nameEn} (${product.nameKm}) - ៛${product.priceKHR.toLocaleString()}${categoryDisplay}`);
   }
 
   // Create default settings

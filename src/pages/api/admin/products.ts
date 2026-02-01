@@ -61,10 +61,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const { error } = await requireAdmin(cookies);
     if (error) return error;
     
-    const { nameEn, nameKm, category, priceUSDcents, priceKHR, imageUrl } = await request.json();
+    const { nameEn, nameKm, categories, priceUSDcents, priceKHR, imageUrl } = await request.json();
     
-    if (!nameEn || !nameKm || !category || priceKHR === undefined) {
-      return new Response(JSON.stringify({ error: 'Missing required fields (nameEn, nameKm, category, priceKHR)' }), {
+    if (!nameEn || !nameKm || !categories || !Array.isArray(categories) || categories.length === 0 || priceKHR === undefined) {
+      return new Response(JSON.stringify({ error: 'Missing required fields (nameEn, nameKm, categories, priceKHR)' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -76,11 +76,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const calculatedUSDcents = priceUSDcents ?? Math.round((priceKHR / exchangeRate) * 100);
     
     const id = crypto.randomUUID();
-    createProduct(id, nameEn, nameKm, category, calculatedUSDcents, priceKHR, imageUrl || '');
+    createProduct(id, nameEn, nameKm, categories, calculatedUSDcents, priceKHR, imageUrl || '');
     
     return new Response(JSON.stringify({ 
       success: true, 
-      product: { id, nameEn, nameKm, category, priceUSDcents: calculatedUSDcents, priceKHR, imageUrl } 
+      product: { id, nameEn, nameKm, categories, priceUSDcents: calculatedUSDcents, priceKHR, imageUrl } 
     }), {
       status: 201,
       headers: { 'Content-Type': 'application/json' }
@@ -99,10 +99,10 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     const { error } = await requireAdmin(cookies);
     if (error) return error;
     
-    const { id, nameEn, nameKm, category, priceUSDcents, priceKHR, imageUrl } = await request.json();
+    const { id, nameEn, nameKm, categories, priceUSDcents, priceKHR, imageUrl } = await request.json();
     
-    if (!id || !nameEn || !nameKm || !category || priceKHR === undefined) {
-      return new Response(JSON.stringify({ error: 'Missing required fields (id, nameEn, nameKm, category, priceKHR)' }), {
+    if (!id || !nameEn || !nameKm || !categories || !Array.isArray(categories) || categories.length === 0 || priceKHR === undefined) {
+      return new Response(JSON.stringify({ error: 'Missing required fields (id, nameEn, nameKm, categories, priceKHR)' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -121,7 +121,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     // Calculate USD cents from KHR (for compatibility)
     const calculatedUSDcents = priceUSDcents ?? Math.round((priceKHR / exchangeRate) * 100);
     
-    updateProduct(id, nameEn, nameKm, category, calculatedUSDcents, priceKHR, imageUrl || '');
+    updateProduct(id, nameEn, nameKm, categories, calculatedUSDcents, priceKHR, imageUrl || '');
     
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
