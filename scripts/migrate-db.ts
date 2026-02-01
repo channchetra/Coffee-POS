@@ -41,6 +41,41 @@ if (!columnExists('products', 'priceKHR')) {
   console.log('✅ priceKHR column already exists, skipping.\n');
 }
 
+// Helper to check if table exists
+function tableExists(table: string): boolean {
+  const result = db.query(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(table);
+  return result !== null;
+}
+
+// Migration: Create product_categories junction table
+if (!tableExists('product_categories')) {
+  console.log('📝 Creating product_categories junction table...');
+  db.exec(`
+    CREATE TABLE product_categories (
+      productId TEXT NOT NULL,
+      categorySlug TEXT NOT NULL,
+      PRIMARY KEY (productId, categorySlug),
+      FOREIGN KEY (productId) REFERENCES products(id) ON DELETE CASCADE,
+      FOREIGN KEY (categorySlug) REFERENCES categories(slug) ON DELETE CASCADE
+    )
+  `);
+  db.exec(`CREATE INDEX idx_product_categories_productId ON product_categories(productId)`);
+  db.exec(`CREATE INDEX idx_product_categories_categorySlug ON product_categories(categorySlug)`);
+  
+  // Migrate existing products: populate junction table from products.category
+  console.log('📝 Migrating existing product categories...');
+  const products = db.query('SELECT id, category FROM products').all() as { id: string; category: string }[];
+  const insertStmt = db.prepare('INSERT OR IGNORE INTO product_categories (productId, categorySlug) VALUES (?, ?)');
+  
+  for (const product of products) {
+    insertStmt.run(product.id, product.category);
+  }
+  
+  console.log(`✅ product_categories table created and ${products.length} products migrated!\n`);
+} else {
+  console.log('✅ product_categories table already exists, skipping.\n');
+}
+
 db.close();
 
 console.log('🎉 All migrations completed successfully!');
