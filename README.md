@@ -11,7 +11,8 @@ A modern, offline-first Point of Sale (POS) web application built for coffee sho
 - **Hold/Resume Carts**: Save and resume multiple carts locally
 - **Conflict-Free Sync**: Only finalized invoices sync to server (append-only)
 - **Touch-Friendly UI**: Large buttons, big cards, designed for tablets
-- **Multilingual**: English and Khmer 
+- **Multilingual**: English and Khmer language support
+- **Printable Invoices**: Receipt and A4 format printing
 - **Admin Dashboard**: View sales stats, manage products and users
 
 ## Tech Stack
