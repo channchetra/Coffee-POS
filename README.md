@@ -1,4 +1,4 @@
-# My Coffee POS
+# My Coffee
 
 A modern, offline-first Point of Sale (POS) web application built for coffee shops. Designed for Android tablets with full offline support and multi-terminal sync capabilities.
 
