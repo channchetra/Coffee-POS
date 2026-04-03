@@ -1,4 +1,4 @@
-const CACHE_NAME = 'coffee-pos-v2';
+const CACHE_NAME = 'coffee-pos-v3';
 const STATIC_ASSETS = [
   '/',
   '/login',

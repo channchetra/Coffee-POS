@@ -1,3 +1,4 @@
+import { gzip } from 'pako';
 import { formatDateTime } from '../utils/format';
 import { formatKHR } from '../utils/currency';
 
@@ -34,8 +35,7 @@ function escapeHtml(input: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
+function bytesToBase64(bytes: Uint8Array): string {
   const chunkSize = 0x8000;
   let binary = '';
 
@@ -48,28 +48,15 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 async function gzipToBase64(input: string): Promise<string | null> {
-  if (typeof CompressionStream === 'undefined') {
+  try {
+    const encoder = new TextEncoder();
+    const sourceBytes = encoder.encode(input);
+    const compressedBytes = gzip(sourceBytes);
+    return bytesToBase64(compressedBytes);
+  } catch (err) {
+    console.error('[ESC/POS] pako gzip error:', err);
     return null;
   }
-
-  const encoder = new TextEncoder();
-  const sourceBytes = encoder.encode(input);
-  const compressionStream = new CompressionStream('gzip');
-  const writer = compressionStream.writable.getWriter();
-  await writer.write(sourceBytes);
-  await writer.close();
-
-  const compressed = await new Response(compressionStream.readable).arrayBuffer();
-  return arrayBufferToBase64(compressed);
-}
-
-async function gzipToBase64WithTimeout(input: string, timeoutMs: number): Promise<string | null> {
-  return await Promise.race([
-    gzipToBase64(input),
-    new Promise<null>((resolve) => {
-      setTimeout(() => resolve(null), timeoutMs);
-    })
-  ]);
 }
 
 function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem[]): string {
@@ -132,7 +119,7 @@ export async function printInvoiceViaEscPosIntent(
 
   let compressedBase64: string | null = null;
   try {
-    compressedBase64 = await gzipToBase64WithTimeout(payload, 3500);
+    compressedBase64 = await gzipToBase64(payload);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown compression error';
     console.error('[ESC/POS] Compression failed:', message);
@@ -140,8 +127,8 @@ export async function printInvoiceViaEscPosIntent(
   }
 
   if (!compressedBase64) {
-    console.warn('[ESC/POS] Compression unavailable or timed out');
-    return { success: false, error: 'Compression unavailable or timed out. Use latest Chrome on Android.' };
+    console.warn('[ESC/POS] Compression unavailable');
+    return { success: false, error: 'Compression unavailable on this device.' };
   }
 
   const intentUrl = `intent://#Intent;scheme=print-intent;S.content=${encodeURIComponent(compressedBase64)};end`;
@@ -167,11 +154,11 @@ export async function printInvoiceViaEscPosIntent(
  */
 export function testEscPosIntent(): { available: boolean; message: string } {
   const isAndroid = /Android/i.test(navigator.userAgent);
-  const hasCompressionStream = typeof CompressionStream !== 'undefined';
+  const hasPako = typeof gzip === 'function';
 
   console.log('[ESC/POS-TEST] User Agent:', navigator.userAgent);
   console.log('[ESC/POS-TEST] Is Android:', isAndroid);
-  console.log('[ESC/POS-TEST] CompressionStream available:', hasCompressionStream);
+  console.log('[ESC/POS-TEST] pako gzip available:', hasPako);
 
   if (!isAndroid) {
     return {
@@ -180,10 +167,10 @@ export function testEscPosIntent(): { available: boolean; message: string } {
     };
   }
 
-  if (!hasCompressionStream) {
+  if (!hasPako) {
     return {
       available: false,
-      message: 'CompressionStream API not available. Browser may not support gzip compression.'
+      message: 'Gzip library unavailable in client bundle.'
     };
   }
 
@@ -195,21 +182,21 @@ export function testEscPosIntent(): { available: boolean; message: string } {
 
 export function getEscPosEnvironmentStatus(): {
   isAndroid: boolean;
-  hasCompressionStream: boolean;
+  hasCompressionLibrary: boolean;
   userAgent: string;
   recommendation: string;
 } {
   const isAndroid = /Android/i.test(navigator.userAgent);
-  const hasCompressionStream = typeof CompressionStream !== 'undefined';
+  const hasCompressionLibrary = typeof gzip === 'function';
   const recommendation = !isAndroid
     ? 'Use Android Chrome for ESC/POS Intent printing.'
-    : !hasCompressionStream
-      ? 'Update Chrome WebView/Chrome. CompressionStream is required.'
+    : !hasCompressionLibrary
+      ? 'Compression library unavailable. Reload app and clear cache.'
       : 'Environment looks ready. If silent, verify open-escpos-print-service is installed and set as handler.';
 
   return {
     isAndroid,
-    hasCompressionStream,
+    hasCompressionLibrary,
     userAgent: navigator.userAgent,
     recommendation
   };

@@ -71,7 +71,7 @@ export function SettingsManager() {
     const status = getEscPosEnvironmentStatus();
     const summary = [
       `Android: ${status.isAndroid ? 'Yes' : 'No'}`,
-      `Compression API: ${status.hasCompressionStream ? 'OK' : 'Missing'}`,
+      `Compression: ${status.hasCompressionLibrary ? 'OK' : 'Missing'}`,
       status.recommendation
     ].join(' | ');
     setPrinterStatus(summary);
