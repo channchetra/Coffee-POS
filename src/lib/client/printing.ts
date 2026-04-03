@@ -63,6 +63,15 @@ async function gzipToBase64(input: string): Promise<string | null> {
   return arrayBufferToBase64(compressed);
 }
 
+async function gzipToBase64WithTimeout(input: string, timeoutMs: number): Promise<string | null> {
+  return await Promise.race([
+    gzipToBase64(input),
+    new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), timeoutMs);
+    })
+  ]);
+}
+
 function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem[]): string {
   const sequence = getDailySequenceFromInvoiceNo(invoice.invoiceNo);
 
@@ -119,11 +128,20 @@ export async function printInvoiceViaEscPosIntent(
   const payload = JSON.stringify([html]);
 
   console.log('[ESC/POS] Building receipt HTML...');
-  const compressedBase64 = await gzipToBase64(payload);
+  console.log('[ESC/POS] Compressing payload...');
+
+  let compressedBase64: string | null = null;
+  try {
+    compressedBase64 = await gzipToBase64WithTimeout(payload, 3500);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown compression error';
+    console.error('[ESC/POS] Compression failed:', message);
+    return { success: false, error: `Compression failed: ${message}` };
+  }
 
   if (!compressedBase64) {
-    console.warn('[ESC/POS] Compression not available (CompressionStream unsupported)');
-    return { success: false, error: 'CompressionStream not supported on this device' };
+    console.warn('[ESC/POS] Compression unavailable or timed out');
+    return { success: false, error: 'Compression unavailable or timed out. Use latest Chrome on Android.' };
   }
 
   const intentUrl = `intent://#Intent;scheme=print-intent;S.content=${encodeURIComponent(compressedBase64)};end`;
@@ -172,5 +190,27 @@ export function testEscPosIntent(): { available: boolean; message: string } {
   return {
     available: true,
     message: 'ESC/POS Intent should be available. Make sure open-escpos-print-service app is installed.'
+  };
+}
+
+export function getEscPosEnvironmentStatus(): {
+  isAndroid: boolean;
+  hasCompressionStream: boolean;
+  userAgent: string;
+  recommendation: string;
+} {
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const hasCompressionStream = typeof CompressionStream !== 'undefined';
+  const recommendation = !isAndroid
+    ? 'Use Android Chrome for ESC/POS Intent printing.'
+    : !hasCompressionStream
+      ? 'Update Chrome WebView/Chrome. CompressionStream is required.'
+      : 'Environment looks ready. If silent, verify open-escpos-print-service is installed and set as handler.';
+
+  return {
+    isAndroid,
+    hasCompressionStream,
+    userAgent: navigator.userAgent,
+    recommendation
   };
 }

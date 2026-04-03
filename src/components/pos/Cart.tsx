@@ -246,6 +246,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
 
   const handlePrintInvoiceWithData = async (invoice: LocalInvoice, itemsForPrint: LocalInvoiceItem[]) => {
     const isAndroid = /Android/i.test(navigator.userAgent);
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const shouldTryEscPos = isAndroid || printSettings.receiptPrintMode === 'escpos-intent';
 
     if (shouldTryEscPos) {
@@ -256,6 +257,8 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
         return;
       }
       console.warn('[POS] ESC/POS Intent failed:', result.error);
+      const message = result.error || 'ESC/POS print failed';
+      alert(`ESC/POS print failed. ${message}`);
       // Fall through to browser print as fallback
     }
 
@@ -267,7 +270,13 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
       return;
     }
 
-    // Online browser print - open in new tab and print.
+    // Online browser print - avoid popup blockers on mobile by using same-tab navigation.
+    if (isMobile) {
+      console.log('[POS] Mobile detected - navigating to invoice page for browser print fallback');
+      window.location.href = `/invoice/${invoice.id}`;
+      return;
+    }
+
     console.log('[POS] Opening invoice in new tab for browser print');
     const printWindow = window.open(`/invoice/${invoice.id}`, '_blank');
     if (printWindow) {
@@ -276,6 +285,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
       };
     } else {
       console.error('[POS] Failed to open print window');
+      window.location.href = `/invoice/${invoice.id}`;
     }
   };
   

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
 import { useLanguageStore } from '../../lib/store';
 import { formatExchangeRate } from '../../lib/utils/currency';
+import { getEscPosEnvironmentStatus } from '../../lib/client/printing';
 import { t } from '../../i18n';
 
 export function SettingsManager() {
@@ -13,6 +14,7 @@ export function SettingsManager() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [printerStatus, setPrinterStatus] = useState('');
   
   useEffect(() => {
     const fetchSettings = async () => {
@@ -63,6 +65,16 @@ export function SettingsManager() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleCheckPrinter = () => {
+    const status = getEscPosEnvironmentStatus();
+    const summary = [
+      `Android: ${status.isAndroid ? 'Yes' : 'No'}`,
+      `Compression API: ${status.hasCompressionStream ? 'OK' : 'Missing'}`,
+      status.recommendation
+    ].join(' | ');
+    setPrinterStatus(summary);
   };
   
   if (loading) {
@@ -183,6 +195,25 @@ export function SettingsManager() {
                 </p>
               </div>
             </div>
+          </div>
+
+          <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-medium text-gray-900">
+                  {language === 'km' ? 'ពិនិត្យម៉ាស៊ីនព្រីន ESC/POS' : 'Check ESC/POS Printer'}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {language === 'km' ? 'ពិនិត្យភាពរួចរាល់របស់ឧបករណ៍សម្រាប់ Intent Print' : 'Verify device readiness for intent printing'}
+                </p>
+              </div>
+              <Button variant="outline" onClick={handleCheckPrinter}>
+                {language === 'km' ? 'ពិនិត្យ' : 'Check'}
+              </Button>
+            </div>
+            {printerStatus && (
+              <p className="text-sm text-gray-700 mt-3">{printerStatus}</p>
+            )}
           </div>
         </div>
       </div>
