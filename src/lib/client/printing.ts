@@ -82,33 +82,33 @@ function buildReceiptHtml(
 
   const stylePreset = {
     compact: {
-      pagePaddingMm: paperSize === '80mm' ? 1.4 : 0.9,
+      pagePaddingMm: paperSize === '80mm' ? 1.4 : 1.0,
       titleSizePx: 13,
-      sequenceSizePx: paperSize === '80mm' ? 34 : 30,
-      itemNameSizePx: paperSize === '80mm' ? 17 : 16,
-      metaSizePx: 10,
-      sectionLabelSizePx: 9,
-      itemGapMm: 1,
+      sequenceSizePx: paperSize === '80mm' ? 34 : 32,
+      itemNameSizePx: paperSize === '80mm' ? 17 : 20,
+      metaSizePx: paperSize === '80mm' ? 10 : 13,
+      sectionLabelSizePx: paperSize === '80mm' ? 9 : 12,
+      itemGapMm: paperSize === '80mm' ? 1 : 1.1,
       footerGapMm: 2,
     },
     normal: {
-      pagePaddingMm: paperSize === '80mm' ? 1.8 : 1.1,
+      pagePaddingMm: paperSize === '80mm' ? 1.8 : 1.2,
       titleSizePx: 14,
-      sequenceSizePx: paperSize === '80mm' ? 38 : 32,
-      itemNameSizePx: paperSize === '80mm' ? 20 : 19,
-      metaSizePx: 11,
-      sectionLabelSizePx: 10,
-      itemGapMm: 1.2,
+      sequenceSizePx: paperSize === '80mm' ? 38 : 34,
+      itemNameSizePx: paperSize === '80mm' ? 20 : 23,
+      metaSizePx: paperSize === '80mm' ? 11 : 14,
+      sectionLabelSizePx: paperSize === '80mm' ? 10 : 13,
+      itemGapMm: paperSize === '80mm' ? 1.2 : 1.3,
       footerGapMm: 2.5,
     },
     large: {
-      pagePaddingMm: paperSize === '80mm' ? 2.2 : 1.4,
+      pagePaddingMm: paperSize === '80mm' ? 2.2 : 1.5,
       titleSizePx: 16,
       sequenceSizePx: paperSize === '80mm' ? 42 : 36,
-      itemNameSizePx: paperSize === '80mm' ? 22 : 21,
-      metaSizePx: 12,
-      sectionLabelSizePx: 11,
-      itemGapMm: 1.4,
+      itemNameSizePx: paperSize === '80mm' ? 22 : 26,
+      metaSizePx: paperSize === '80mm' ? 12 : 16,
+      sectionLabelSizePx: paperSize === '80mm' ? 11 : 14,
+      itemGapMm: paperSize === '80mm' ? 1.4 : 1.5,
       footerGapMm: 3,
     },
   }[style];
@@ -152,12 +152,10 @@ function buildReceiptHtml(
   .title {
     font-size: ${titleSizePx}px;
     font-weight: 900;
-    letter-spacing: 0.5px;
     margin-bottom: 1mm;
   }
   .sequence {
     font-size: ${sequenceSizePx}px;
-    line-height: 1;
     font-weight: 900;
     margin: 0.5mm 0 1mm;
   }
