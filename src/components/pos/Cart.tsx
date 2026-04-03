@@ -245,7 +245,10 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   };
 
   const handlePrintInvoiceWithData = async (invoice: LocalInvoice, itemsForPrint: LocalInvoiceItem[]) => {
-    if (printSettings.receiptPrintMode === 'escpos-intent') {
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const shouldTryEscPos = isAndroid || printSettings.receiptPrintMode === 'escpos-intent';
+
+    if (shouldTryEscPos) {
       console.log('[POS] Attempting ESC/POS Intent print...');
       const result = await printInvoiceViaEscPosIntent(invoice, itemsForPrint);
       if (result.success) {
@@ -361,7 +364,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
                 <tbody>
                   {completedInvoiceItems.map((item) => (
                     <tr key={item.id}>
-                      <td className="py-1">{item.nameSnapshot.split(' / ')[language === 'km' ? 1 : 0]}</td>
+                      <td className="py-1">{item.nameSnapshot.split(' / ')[0] || item.nameSnapshot}</td>
                       <td className="text-center py-1">{item.qty}</td>
                       <td className="text-right py-1">{formatKHR(item.lineTotalKHR)}</td>
                     </tr>

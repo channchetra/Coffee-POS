@@ -216,7 +216,7 @@ export function InvoiceView({ invoiceId }: InvoiceViewProps) {
           <tbody className="divide-y divide-gray-100">
             {items.map((item) => (
               <tr key={item.id}>
-                <td className="py-3 text-gray-900">{item.nameSnapshot}</td>
+                <td className="py-3 text-gray-900">{item.nameSnapshot.split(' / ')[0] || item.nameSnapshot}</td>
                 <td className="py-3 text-center text-gray-600">{item.qty}</td>
                 <td className="py-3 text-right">
                   <div className="dual-currency">
