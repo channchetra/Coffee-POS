@@ -114,16 +114,63 @@ function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem
 export async function printInvoiceViaEscPosIntent(
   invoice: PrintableInvoice,
   items: PrintableInvoiceItem[]
-): Promise<boolean> {
+): Promise<{ success: boolean; error?: string }> {
   const html = buildReceiptHtml(invoice, items);
   const payload = JSON.stringify([html]);
+
+  console.log('[ESC/POS] Building receipt HTML...');
   const compressedBase64 = await gzipToBase64(payload);
 
   if (!compressedBase64) {
-    return false;
+    console.warn('[ESC/POS] Compression not available (CompressionStream unsupported)');
+    return { success: false, error: 'CompressionStream not supported on this device' };
   }
 
   const intentUrl = `intent://#Intent;scheme=print-intent;S.content=${encodeURIComponent(compressedBase64)};end`;
-  window.location.href = intentUrl;
-  return true;
+  console.log('[ESC/POS] Compressed payload size:', compressedBase64.length, 'bytes');
+  console.log('[ESC/POS] Intent URL generated, attempting to launch...');
+  console.log('[ESC/POS] Intent scheme: print-intent');
+
+  try {
+    console.log('[ESC/POS] Launching intent via window.location.href');
+    window.location.href = intentUrl;
+    // Return success - intent launch was attempted
+    return { success: true, error: undefined };
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[ESC/POS] Failed to launch intent:', errorMsg);
+    return { success: false, error: `Failed to launch intent: ${errorMsg}` };
+  }
+}
+
+/**
+ * Test ESC/POS intent service availability
+ * @returns Service info and availability status
+ */
+export function testEscPosIntent(): { available: boolean; message: string } {
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const hasCompressionStream = typeof CompressionStream !== 'undefined';
+
+  console.log('[ESC/POS-TEST] User Agent:', navigator.userAgent);
+  console.log('[ESC/POS-TEST] Is Android:', isAndroid);
+  console.log('[ESC/POS-TEST] CompressionStream available:', hasCompressionStream);
+
+  if (!isAndroid) {
+    return {
+      available: false,
+      message: 'ESC/POS Intent only works on Android devices. You are on: ' + navigator.userAgent
+    };
+  }
+
+  if (!hasCompressionStream) {
+    return {
+      available: false,
+      message: 'CompressionStream API not available. Browser may not support gzip compression.'
+    };
+  }
+
+  return {
+    available: true,
+    message: 'ESC/POS Intent should be available. Make sure open-escpos-print-service app is installed.'
+  };
 }

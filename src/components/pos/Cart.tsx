@@ -246,25 +246,33 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
 
   const handlePrintInvoiceWithData = async (invoice: LocalInvoice, itemsForPrint: LocalInvoiceItem[]) => {
     if (printSettings.receiptPrintMode === 'escpos-intent') {
-      const printed = await printInvoiceViaEscPosIntent(invoice, itemsForPrint);
-      if (printed) {
+      console.log('[POS] Attempting ESC/POS Intent print...');
+      const result = await printInvoiceViaEscPosIntent(invoice, itemsForPrint);
+      if (result.success) {
+        console.log('[POS] ESC/POS Intent launched successfully');
         return;
       }
+      console.warn('[POS] ESC/POS Intent failed:', result.error);
+      // Fall through to browser print as fallback
     }
 
     // Browser fallback: If offline, show inline invoice and trigger print.
     if (!navigator.onLine) {
+      console.log('[POS] Offline - showing inline invoice for print');
       setShowInlineInvoice(true);
       setTimeout(() => window.print(), 300);
       return;
     }
 
     // Online browser print - open in new tab and print.
+    console.log('[POS] Opening invoice in new tab for browser print');
     const printWindow = window.open(`/invoice/${invoice.id}`, '_blank');
     if (printWindow) {
       printWindow.onload = () => {
         setTimeout(() => printWindow.print(), 500);
       };
+    } else {
+      console.error('[POS] Failed to open print window');
     }
   };
   
