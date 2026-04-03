@@ -51,7 +51,10 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   useEffect(() => {
     const loadPrintSettings = async () => {
       try {
-        const response = await fetch('/api/settings');
+        const response = await fetch('/api/settings', {
+          cache: 'no-store',
+          credentials: 'include'
+        });
         if (!response.ok) return;
         const data = await response.json();
         setPrintSettings({
@@ -251,16 +254,36 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   };
 
   const handlePrintInvoiceWithData = async (invoice: LocalInvoice, itemsForPrint: LocalInvoiceItem[]) => {
-    const isAndroid = /Android/i.test(navigator.userAgent);
+    let effectivePrintSettings = printSettings;
+    try {
+      const response = await fetch('/api/settings', {
+        cache: 'no-store',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        effectivePrintSettings = {
+          autoPrintInvoice: !!data.autoPrintInvoice,
+          receiptPrintMode: data.receiptPrintMode === 'escpos-intent' ? 'escpos-intent' : 'browser',
+          receiptPaperSize: data.receiptPaperSize === '80mm' ? '80mm' : '58mm',
+          receiptCopies: data.receiptCopies === 2 ? 2 : 1,
+          receiptStyle: ['compact', 'normal', 'large'].includes(data.receiptStyle) ? data.receiptStyle : 'normal'
+        };
+        setPrintSettings(effectivePrintSettings);
+      }
+    } catch {
+      // Keep current in-memory settings when refresh fails.
+    }
+
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const shouldTryEscPos = isAndroid && printSettings.receiptPrintMode === 'escpos-intent';
+    const shouldTryEscPos = effectivePrintSettings.receiptPrintMode === 'escpos-intent';
 
     if (shouldTryEscPos) {
       console.log('[POS] Attempting ESC/POS Intent print...');
       const result = await printInvoiceViaEscPosIntent(invoice, itemsForPrint, {
-        paperSize: printSettings.receiptPaperSize,
-        copies: printSettings.receiptCopies,
-        style: printSettings.receiptStyle
+        paperSize: effectivePrintSettings.receiptPaperSize,
+        copies: effectivePrintSettings.receiptCopies,
+        style: effectivePrintSettings.receiptStyle
       });
       if (result.success) {
         console.log('[POS] ESC/POS Intent launched successfully');
