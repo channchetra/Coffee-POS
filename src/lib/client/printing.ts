@@ -61,34 +61,19 @@ async function gzipToBase64(input: string): Promise<string | null> {
 
 function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem[]): string {
   const sequence = getDailySequenceFromInvoiceNo(invoice.invoiceNo);
-
-  const lines: string[] = [];
-  lines.push('RECEIPT');
-  lines.push(`#${sequence}`);
-  lines.push(invoice.invoiceNo);
-  lines.push(formatDateTime(invoice.createdAt, 'en-US'));
-  lines.push(`Cashier: ${invoice.cashierName}`);
-  lines.push('--------------------------------');
-  lines.push('ITEM                    QTY   AMT');
-
-  for (const item of items) {
+  const itemRows = items.map((item) => {
     const names = item.nameSnapshot.split(' / ');
-    const englishName = (names[0] || item.nameSnapshot).trim();
-    const amount = formatKHR(item.lineTotalKHR);
-    const nameCol = englishName.length > 22 ? `${englishName.slice(0, 22)}` : englishName.padEnd(22, ' ');
-    const qtyCol = String(item.qty).padStart(3, ' ');
-    const amountCol = amount.padStart(7, ' ');
-    lines.push(`${nameCol}${qtyCol}${amountCol}`);
-  }
-
-  lines.push('--------------------------------');
-  lines.push(`TOTAL: ${formatKHR(invoice.totalKHR)}`);
-  lines.push(`PAID:  ${formatKHR(invoice.paidKHR)}`);
-  lines.push(invoice.paymentMethod === 'bank' ? 'CHANGE: No Change' : `CHANGE: ${formatKHR(invoice.changeKHR)}`);
-  lines.push('--------------------------------');
-  lines.push('Thank you!');
-
-  const receiptText = escapeHtml(lines.join('\n'));
+    const englishName = escapeHtml((names[0] || item.nameSnapshot).trim());
+    const amount = escapeHtml(formatKHR(item.lineTotalKHR));
+    return `
+      <div class="item-row">
+        <div class="item-name">${englishName}</div>
+        <div class="item-meta">
+          <span class="item-qty">QTY ${item.qty}</span>
+          <span class="item-amount">${amount}</span>
+        </div>
+      </div>`;
+  }).join('');
 
   return `<!doctype html>
 <html>
@@ -96,13 +81,116 @@ function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem
 <meta charset="utf-8" />
 <style>
   @page { margin: 0mm; }
-  body { margin: 0; padding: 0; font-family: monospace; }
-  .receipt { width: 76mm; padding: 2mm; }
-  pre { margin: 0; white-space: pre; font-size: 12px; line-height: 1.3; }
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    font-weight: 700;
+    color: #000;
+  }
+  .receipt {
+    width: 76mm;
+    padding: 3mm 2mm;
+    font-weight: 700;
+  }
+  .center { text-align: center; }
+  .title {
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    margin-bottom: 2mm;
+  }
+  .sequence {
+    font-size: 44px;
+    line-height: 1;
+    font-weight: 900;
+    margin: 1mm 0 2mm;
+  }
+  .invoice-no,
+  .meta,
+  .footer,
+  .section-label,
+  .totals,
+  .item-meta {
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .divider {
+    border-top: 1px solid #000;
+    margin: 4mm 0;
+  }
+  .section-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1.5mm;
+    font-size: 11px;
+  }
+  .item-row {
+    padding: 1.5mm 0;
+  }
+  .item-name {
+    font-size: 16px;
+    line-height: 1.05;
+    font-weight: 900;
+    margin-bottom: 1mm;
+  }
+  .item-meta,
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .item-qty,
+  .item-amount,
+  .total-label,
+  .total-value {
+    font-weight: 800;
+  }
+  .total-row {
+    margin: 1.5mm 0;
+    font-size: 13px;
+  }
+  .grand-total {
+    font-size: 15px;
+    font-weight: 900;
+  }
+  .footer {
+    text-align: center;
+    margin-top: 4mm;
+    font-size: 12px;
+    font-weight: 900;
+  }
 </style>
 </head>
 <body>
-  <div class="receipt"><pre>${receiptText}</pre></div>
+  <div class="receipt">
+    <div class="center title">RECEIPT</div>
+    <div class="center sequence">#${sequence}</div>
+    <div class="center invoice-no">${escapeHtml(invoice.invoiceNo)}</div>
+    <div class="center meta">${escapeHtml(formatDateTime(invoice.createdAt, 'en-US'))}</div>
+    <div class="center meta">Cashier: ${escapeHtml(invoice.cashierName)}</div>
+
+    <div class="divider"></div>
+
+    <div class="section-label">
+      <span>ITEM</span>
+      <span>QTY / AMT</span>
+    </div>
+
+    ${itemRows}
+
+    <div class="divider"></div>
+
+    <div class="totals">
+      <div class="total-row"><span class="total-label">TOTAL</span><span class="total-value">${escapeHtml(formatKHR(invoice.totalKHR))}</span></div>
+      <div class="total-row"><span class="total-label">PAID</span><span class="total-value">${escapeHtml(formatKHR(invoice.paidKHR))}</span></div>
+      <div class="total-row grand-total"><span class="total-label">CHANGE</span><span class="total-value">${invoice.paymentMethod === 'bank' ? 'No Change' : escapeHtml(formatKHR(invoice.changeKHR))}</span></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="footer">THANK YOU</div>
+  </div>
 </body>
 </html>`;
 }
