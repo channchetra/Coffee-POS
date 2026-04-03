@@ -6,7 +6,7 @@ import { formatUSD, formatKHR, usdToKHR } from '../../lib/utils/currency';
 import { saveHeldCart, getHeldCarts, saveLocalInvoice, generateInvoiceNo, getOrCreateDeviceId, getLocalInvoice, type HeldCart, type LocalInvoice, type LocalInvoiceItem, type PaymentMethod } from '../../lib/client/db';
 import { syncToServer } from '../../lib/client/sync';
 import { formatDateTime } from '../../lib/utils/format';
-import { getDailySequenceFromInvoiceNo, printInvoiceViaEscPosIntent, type ReceiptPaperSize } from '../../lib/client/printing';
+import { getDailySequenceFromInvoiceNo, printInvoiceViaEscPosIntent, type ReceiptPaperSize, type ReceiptPrintStyle } from '../../lib/client/printing';
 import { t } from '../../i18n';
 import { Button } from '../ui/Button';
 
@@ -31,10 +31,12 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   const [completedInvoice, setCompletedInvoice] = useState<LocalInvoice | null>(null);
   const [completedInvoiceItems, setCompletedInvoiceItems] = useState<LocalInvoiceItem[]>([]);
   const [showInlineInvoice, setShowInlineInvoice] = useState(false);
-  const [printSettings, setPrintSettings] = useState<{ autoPrintInvoice: boolean; receiptPrintMode: 'browser' | 'escpos-intent'; receiptPaperSize: ReceiptPaperSize }>({
+  const [printSettings, setPrintSettings] = useState<{ autoPrintInvoice: boolean; receiptPrintMode: 'browser' | 'escpos-intent'; receiptPaperSize: ReceiptPaperSize; receiptCopies: 1 | 2; receiptStyle: ReceiptPrintStyle }>({
     autoPrintInvoice: false,
     receiptPrintMode: 'browser',
-    receiptPaperSize: '58mm'
+    receiptPaperSize: '58mm',
+    receiptCopies: 1,
+    receiptStyle: 'normal'
   });
   
   // Load held carts on mount to show badge count
@@ -55,7 +57,9 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
         setPrintSettings({
           autoPrintInvoice: !!data.autoPrintInvoice,
           receiptPrintMode: data.receiptPrintMode === 'escpos-intent' ? 'escpos-intent' : 'browser',
-          receiptPaperSize: data.receiptPaperSize === '80mm' ? '80mm' : '58mm'
+          receiptPaperSize: data.receiptPaperSize === '80mm' ? '80mm' : '58mm',
+          receiptCopies: data.receiptCopies === 2 ? 2 : 1,
+          receiptStyle: ['compact', 'normal', 'large'].includes(data.receiptStyle) ? data.receiptStyle : 'normal'
         });
       } catch {
         // Keep default print settings when request fails.
@@ -253,7 +257,11 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
 
     if (shouldTryEscPos) {
       console.log('[POS] Attempting ESC/POS Intent print...');
-      const result = await printInvoiceViaEscPosIntent(invoice, itemsForPrint, { paperSize: printSettings.receiptPaperSize });
+      const result = await printInvoiceViaEscPosIntent(invoice, itemsForPrint, {
+        paperSize: printSettings.receiptPaperSize,
+        copies: printSettings.receiptCopies,
+        style: printSettings.receiptStyle
+      });
       if (result.success) {
         console.log('[POS] ESC/POS Intent launched successfully');
         return;

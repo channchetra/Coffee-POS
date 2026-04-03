@@ -20,9 +20,12 @@ export interface PrintableInvoiceItem {
 }
 
 export type ReceiptPaperSize = '58mm' | '80mm';
+export type ReceiptPrintStyle = 'compact' | 'normal' | 'large';
 
 interface ReceiptPrintOptions {
   paperSize?: ReceiptPaperSize;
+  copies?: 1 | 2;
+  style?: ReceiptPrintStyle;
 }
 
 export function getDailySequenceFromInvoiceNo(invoiceNo: string): number {
@@ -72,10 +75,44 @@ function buildReceiptHtml(
 ): string {
   const sequence = getDailySequenceFromInvoiceNo(invoice.invoiceNo);
   const paperSize = options?.paperSize === '80mm' ? '80mm' : '58mm';
+  const style = options?.style || 'normal';
   const paperWidthMm = paperSize === '80mm' ? 80 : 58;
-  const pagePaddingMm = paperSize === '80mm' ? 1.8 : 1.1;
-  const itemNameSizePx = paperSize === '80mm' ? 20 : 19;
-  const sequenceSizePx = paperSize === '80mm' ? 38 : 32;
+  const receiptWidthPercent = paperSize === '80mm' ? '95%' : '92%';
+
+  const stylePreset = {
+    compact: {
+      pagePaddingMm: paperSize === '80mm' ? 1.4 : 0.9,
+      titleSizePx: 13,
+      sequenceSizePx: paperSize === '80mm' ? 34 : 30,
+      itemNameSizePx: paperSize === '80mm' ? 17 : 16,
+      metaSizePx: 10,
+      sectionLabelSizePx: 9,
+      itemGapMm: 1,
+      footerGapMm: 2,
+    },
+    normal: {
+      pagePaddingMm: paperSize === '80mm' ? 1.8 : 1.1,
+      titleSizePx: 14,
+      sequenceSizePx: paperSize === '80mm' ? 38 : 32,
+      itemNameSizePx: paperSize === '80mm' ? 20 : 19,
+      metaSizePx: 11,
+      sectionLabelSizePx: 10,
+      itemGapMm: 1.2,
+      footerGapMm: 2.5,
+    },
+    large: {
+      pagePaddingMm: paperSize === '80mm' ? 2.2 : 1.4,
+      titleSizePx: 16,
+      sequenceSizePx: paperSize === '80mm' ? 42 : 36,
+      itemNameSizePx: paperSize === '80mm' ? 22 : 21,
+      metaSizePx: 12,
+      sectionLabelSizePx: 11,
+      itemGapMm: 1.4,
+      footerGapMm: 3,
+    },
+  }[style];
+
+  const { pagePaddingMm, titleSizePx, sequenceSizePx, itemNameSizePx, metaSizePx, sectionLabelSizePx, itemGapMm, footerGapMm } = stylePreset;
   const itemRows = items.map((item) => {
     const names = item.nameSnapshot.split(' / ');
     const englishName = escapeHtml((names[0] || item.nameSnapshot).trim());
@@ -104,14 +141,15 @@ function buildReceiptHtml(
     color: #000;
   }
   .receipt {
-    width: 100%;
+    width: ${receiptWidthPercent};
     box-sizing: border-box;
+    margin: 0 auto;
     padding: 1.5mm ${pagePaddingMm}mm;
     font-weight: 700;
   }
   .center { text-align: center; }
   .title {
-    font-size: 14px;
+    font-size: ${titleSizePx}px;
     font-weight: 900;
     letter-spacing: 0.5px;
     margin-bottom: 1mm;
@@ -128,21 +166,21 @@ function buildReceiptHtml(
   .section-label,
   .totals,
   .item-meta {
-    font-size: 11px;
+    font-size: ${metaSizePx}px;
     font-weight: 700;
   }
   .divider {
     border-top: 1px solid #000;
-    margin: 2.5mm 0;
+    margin: ${footerGapMm}mm 0;
   }
   .section-label {
     display: flex;
     justify-content: space-between;
     margin-bottom: 1mm;
-    font-size: 10px;
+    font-size: ${sectionLabelSizePx}px;
   }
   .item-row {
-    padding: 1.2mm 0;
+    padding: ${itemGapMm}mm 0;
   }
   .item-name {
     font-size: ${itemNameSizePx}px;
@@ -163,23 +201,23 @@ function buildReceiptHtml(
     font-weight: 800;
   }
   .item-qty {
-    font-size: 11px;
+    font-size: ${metaSizePx}px;
   }
   .item-amount {
-    font-size: 11px;
+    font-size: ${metaSizePx}px;
   }
   .total-row {
     margin: 1mm 0;
-    font-size: 11px;
+    font-size: ${metaSizePx}px;
   }
   .grand-total {
-    font-size: 13px;
+    font-size: ${style === 'large' ? 15 : 13}px;
     font-weight: 900;
   }
   .footer {
     text-align: center;
-    margin-top: 2.5mm;
-    font-size: 11px;
+    margin-top: ${footerGapMm}mm;
+    font-size: ${metaSizePx}px;
     font-weight: 900;
   }
 </style>
@@ -223,7 +261,8 @@ export async function printInvoiceViaEscPosIntent(
   options?: ReceiptPrintOptions
 ): Promise<{ success: boolean; error?: string }> {
   const html = buildReceiptHtml(invoice, items, options);
-  const payload = JSON.stringify([html, html]);
+  const copies = options?.copies === 2 ? 2 : 1;
+  const payload = JSON.stringify(Array.from({ length: copies }, () => html));
 
   console.log('[ESC/POS] Building receipt HTML...');
   console.log('[ESC/POS] Compressing payload...');

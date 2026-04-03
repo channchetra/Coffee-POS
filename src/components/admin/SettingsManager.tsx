@@ -11,6 +11,8 @@ export function SettingsManager() {
   const [autoPrintInvoice, setAutoPrintInvoice] = useState(false);
   const [receiptPrintMode, setReceiptPrintMode] = useState<'browser' | 'escpos-intent'>('browser');
   const [receiptPaperSize, setReceiptPaperSize] = useState<'58mm' | '80mm'>('58mm');
+  const [receiptCopies, setReceiptCopies] = useState<1 | 2>(1);
+  const [receiptStyle, setReceiptStyle] = useState<'compact' | 'normal' | 'large'>('normal');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -27,6 +29,8 @@ export function SettingsManager() {
         setAutoPrintInvoice(data.autoPrintInvoice || false);
         setReceiptPrintMode(data.receiptPrintMode === 'escpos-intent' ? 'escpos-intent' : 'browser');
         setReceiptPaperSize(data.receiptPaperSize === '80mm' ? '80mm' : '58mm');
+        setReceiptCopies(data.receiptCopies === 2 ? 2 : 1);
+        setReceiptStyle(['compact', 'normal', 'large'].includes(data.receiptStyle) ? data.receiptStyle : 'normal');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error loading settings');
       } finally {
@@ -55,7 +59,9 @@ export function SettingsManager() {
           defaultExchangeRateKHR: rate,
           autoPrintInvoice: autoPrintInvoice,
           receiptPrintMode,
-          receiptPaperSize
+          receiptPaperSize,
+          receiptCopies,
+          receiptStyle
         })
       });
       
@@ -171,6 +177,42 @@ export function SettingsManager() {
             </p>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {language === 'km' ? 'ចំនួនបោះពុម្ព' : 'Print Copies'}
+            </label>
+            <select
+              value={receiptCopies}
+              onChange={(e) => setReceiptCopies(Number(e.target.value) as 1 | 2)}
+              aria-label={language === 'km' ? 'ចំនួនបោះពុម្ព' : 'Print copies'}
+              className="input"
+            >
+              <option value={1}>{language === 'km' ? 'តែមួយ' : 'Single'}</option>
+              <option value={2}>{language === 'km' ? 'ទ្វេដង' : 'Double'}</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {language === 'km' ? 'រចនាប័ទ្មវិក្កយបត្រ' : 'Receipt Style'}
+            </label>
+            <select
+              value={receiptStyle}
+              onChange={(e) => setReceiptStyle(e.target.value as 'compact' | 'normal' | 'large')}
+              aria-label={language === 'km' ? 'រចនាប័ទ្មវិក្កយបត្រ' : 'Receipt style'}
+              className="input"
+            >
+              <option value="compact">{language === 'km' ? 'ខ្លី' : 'Compact'}</option>
+              <option value="normal">{language === 'km' ? 'ធម្មតា' : 'Normal'}</option>
+              <option value="large">{language === 'km' ? 'ធំ' : 'Large'}</option>
+            </select>
+            <p className="text-sm text-gray-500 mt-2">
+              {language === 'km'
+                ? 'Compact បោះពុម្ពខ្លី, Normal សមតុល្យ, Large បង្ហាញធំជាង។'
+                : 'Compact is shorter, Normal is balanced, Large is more prominent.'}
+            </p>
+          </div>
+
           <label className="flex items-center gap-4 p-4 bg-gray-50/50 rounded-2xl cursor-pointer hover:bg-gray-100/50 transition-colors">
             <div className="relative">
               <input
@@ -215,6 +257,11 @@ export function SettingsManager() {
                     : (language === 'km'
                         ? 'វិក្កយបត្រនឹងត្រូវបានបង្ហាញ ហើយអ្នកគិតប្រាក់អាចជ្រើសរើសបោះពុម្ពដោយដៃ។'
                         : 'Invoice will be shown and cashier can choose to print manually.')}
+                </p>
+                <p className="text-xs text-blue-500 mt-2">
+                  {language === 'km'
+                    ? `ចម្លង: ${receiptCopies === 2 ? 'ទ្វេដង' : 'តែមួយ'} • រចនាប័ទ្ម: ${receiptStyle}`
+                    : `Copies: ${receiptCopies === 2 ? 'Double' : 'Single'} • Style: ${receiptStyle}`}
                 </p>
               </div>
             </div>

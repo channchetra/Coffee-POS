@@ -25,12 +25,16 @@ export const GET: APIRoute = async ({ cookies }) => {
     const autoPrintInvoice = getSetting('autoPrintInvoice') || false;
     const receiptPrintMode = getSetting('receiptPrintMode') || 'browser';
     const receiptPaperSize = getSetting('receiptPaperSize') || '58mm';
+    const receiptCopies = getSetting('receiptCopies') || 1;
+    const receiptStyle = getSetting('receiptStyle') || 'normal';
     
     return new Response(JSON.stringify({ 
       defaultExchangeRateKHR,
       autoPrintInvoice,
       receiptPrintMode,
-      receiptPaperSize
+      receiptPaperSize,
+      receiptCopies,
+      receiptStyle
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
@@ -86,6 +90,16 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     if (body.receiptPaperSize !== undefined) {
       const value = body.receiptPaperSize === '80mm' ? '80mm' : '58mm';
       setSetting('receiptPaperSize', value);
+    }
+
+    if (body.receiptCopies !== undefined) {
+      const value = body.receiptCopies === 2 ? 2 : 1;
+      setSetting('receiptCopies', value);
+    }
+
+    if (body.receiptStyle !== undefined) {
+      const value = ['compact', 'normal', 'large'].includes(body.receiptStyle) ? body.receiptStyle : 'normal';
+      setSetting('receiptStyle', value);
     }
     
     return new Response(JSON.stringify({ success: true }), {
