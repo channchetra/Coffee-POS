@@ -10,6 +10,7 @@ export function SettingsManager() {
   const [exchangeRate, setExchangeRate] = useState('4000');
   const [autoPrintInvoice, setAutoPrintInvoice] = useState(false);
   const [receiptPrintMode, setReceiptPrintMode] = useState<'browser' | 'escpos-intent'>('browser');
+  const [receiptPaperSize, setReceiptPaperSize] = useState<'58mm' | '80mm'>('58mm');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -25,6 +26,7 @@ export function SettingsManager() {
         setExchangeRate(data.defaultExchangeRateKHR?.toString() || '4000');
         setAutoPrintInvoice(data.autoPrintInvoice || false);
         setReceiptPrintMode(data.receiptPrintMode === 'escpos-intent' ? 'escpos-intent' : 'browser');
+        setReceiptPaperSize(data.receiptPaperSize === '80mm' ? '80mm' : '58mm');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error loading settings');
       } finally {
@@ -52,7 +54,8 @@ export function SettingsManager() {
         body: JSON.stringify({ 
           defaultExchangeRateKHR: rate,
           autoPrintInvoice: autoPrintInvoice,
-          receiptPrintMode
+          receiptPrintMode,
+          receiptPaperSize
         })
       });
       
@@ -145,6 +148,26 @@ export function SettingsManager() {
               {language === 'km'
                 ? 'ESC/POS Intent ត្រូវការកម្មវិធី open-escpos-print-service នៅលើ Android។'
                 : 'ESC/POS Intent requires open-escpos-print-service installed on Android.'}
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {language === 'km' ? 'ទំហំក្រដាសបោះពុម្ព' : 'Receipt Paper Size'}
+            </label>
+            <select
+              value={receiptPaperSize}
+              onChange={(e) => setReceiptPaperSize(e.target.value as '58mm' | '80mm')}
+              aria-label={language === 'km' ? 'ទំហំក្រដាសបោះពុម្ព' : 'Receipt paper size'}
+              className="input"
+            >
+              <option value="58mm">58mm</option>
+              <option value="80mm">80mm</option>
+            </select>
+            <p className="text-sm text-gray-500 mt-2">
+              {language === 'km'
+                ? 'ជ្រើសទំហំក្រដាសត្រឹមត្រូវ ដើម្បីជៀសវាងការស្កេលចុះ។'
+                : 'Select the real printer paper size to avoid scaled-down output.'}
             </p>
           </div>
 

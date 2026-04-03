@@ -24,11 +24,13 @@ export const GET: APIRoute = async ({ cookies }) => {
     const defaultExchangeRateKHR = getSetting('defaultExchangeRateKHR') || 4000;
     const autoPrintInvoice = getSetting('autoPrintInvoice') || false;
     const receiptPrintMode = getSetting('receiptPrintMode') || 'browser';
+    const receiptPaperSize = getSetting('receiptPaperSize') || '58mm';
     
     return new Response(JSON.stringify({ 
       defaultExchangeRateKHR,
       autoPrintInvoice,
-      receiptPrintMode
+      receiptPrintMode,
+      receiptPaperSize
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
@@ -79,6 +81,11 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     if (body.receiptPrintMode !== undefined) {
       const value = body.receiptPrintMode === 'escpos-intent' ? 'escpos-intent' : 'browser';
       setSetting('receiptPrintMode', value);
+    }
+
+    if (body.receiptPaperSize !== undefined) {
+      const value = body.receiptPaperSize === '80mm' ? '80mm' : '58mm';
+      setSetting('receiptPaperSize', value);
     }
     
     return new Response(JSON.stringify({ success: true }), {

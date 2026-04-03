@@ -6,7 +6,7 @@ import { formatUSD, formatKHR, usdToKHR } from '../../lib/utils/currency';
 import { saveHeldCart, getHeldCarts, saveLocalInvoice, generateInvoiceNo, getOrCreateDeviceId, getLocalInvoice, type HeldCart, type LocalInvoice, type LocalInvoiceItem, type PaymentMethod } from '../../lib/client/db';
 import { syncToServer } from '../../lib/client/sync';
 import { formatDateTime } from '../../lib/utils/format';
-import { getDailySequenceFromInvoiceNo, printInvoiceViaEscPosIntent } from '../../lib/client/printing';
+import { getDailySequenceFromInvoiceNo, printInvoiceViaEscPosIntent, type ReceiptPaperSize } from '../../lib/client/printing';
 import { t } from '../../i18n';
 import { Button } from '../ui/Button';
 
@@ -31,9 +31,10 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   const [completedInvoice, setCompletedInvoice] = useState<LocalInvoice | null>(null);
   const [completedInvoiceItems, setCompletedInvoiceItems] = useState<LocalInvoiceItem[]>([]);
   const [showInlineInvoice, setShowInlineInvoice] = useState(false);
-  const [printSettings, setPrintSettings] = useState<{ autoPrintInvoice: boolean; receiptPrintMode: 'browser' | 'escpos-intent' }>({
+  const [printSettings, setPrintSettings] = useState<{ autoPrintInvoice: boolean; receiptPrintMode: 'browser' | 'escpos-intent'; receiptPaperSize: ReceiptPaperSize }>({
     autoPrintInvoice: false,
-    receiptPrintMode: 'browser'
+    receiptPrintMode: 'browser',
+    receiptPaperSize: '58mm'
   });
   
   // Load held carts on mount to show badge count
@@ -53,7 +54,8 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
         const data = await response.json();
         setPrintSettings({
           autoPrintInvoice: !!data.autoPrintInvoice,
-          receiptPrintMode: data.receiptPrintMode === 'escpos-intent' ? 'escpos-intent' : 'browser'
+          receiptPrintMode: data.receiptPrintMode === 'escpos-intent' ? 'escpos-intent' : 'browser',
+          receiptPaperSize: data.receiptPaperSize === '80mm' ? '80mm' : '58mm'
         });
       } catch {
         // Keep default print settings when request fails.
@@ -251,7 +253,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
 
     if (shouldTryEscPos) {
       console.log('[POS] Attempting ESC/POS Intent print...');
-      const result = await printInvoiceViaEscPosIntent(invoice, itemsForPrint);
+      const result = await printInvoiceViaEscPosIntent(invoice, itemsForPrint, { paperSize: printSettings.receiptPaperSize });
       if (result.success) {
         console.log('[POS] ESC/POS Intent launched successfully');
         return;

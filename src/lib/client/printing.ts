@@ -19,6 +19,12 @@ export interface PrintableInvoiceItem {
   lineTotalKHR: number;
 }
 
+export type ReceiptPaperSize = '58mm' | '80mm';
+
+interface ReceiptPrintOptions {
+  paperSize?: ReceiptPaperSize;
+}
+
 export function getDailySequenceFromInvoiceNo(invoiceNo: string): number {
   const parts = invoiceNo.split('-');
   const raw = parts[parts.length - 1] || '';
@@ -59,10 +65,17 @@ async function gzipToBase64(input: string): Promise<string | null> {
   }
 }
 
-function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem[]): string {
+function buildReceiptHtml(
+  invoice: PrintableInvoice,
+  items: PrintableInvoiceItem[],
+  options?: ReceiptPrintOptions
+): string {
   const sequence = getDailySequenceFromInvoiceNo(invoice.invoiceNo);
-  const paperWidthMm = 58;
-  const contentWidthMm = 54;
+  const paperSize = options?.paperSize === '80mm' ? '80mm' : '58mm';
+  const paperWidthMm = paperSize === '80mm' ? 80 : 58;
+  const pagePaddingMm = paperSize === '80mm' ? 2 : 1.5;
+  const itemNameSizePx = paperSize === '80mm' ? 18 : 16;
+  const sequenceSizePx = paperSize === '80mm' ? 40 : 34;
   const itemRows = items.map((item) => {
     const names = item.nameSnapshot.split(' / ');
     const englishName = escapeHtml((names[0] || item.nameSnapshot).trim());
@@ -82,7 +95,7 @@ function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem
 <head>
 <meta charset="utf-8" />
 <style>
-  @page { margin: 0mm; }
+  @page { size: ${paperWidthMm}mm auto; margin: 0mm; }
   body {
     margin: 0;
     padding: 0;
@@ -91,8 +104,9 @@ function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem
     color: #000;
   }
   .receipt {
-    width: ${contentWidthMm}mm;
-    padding: 2mm 1.5mm;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 2mm ${pagePaddingMm}mm;
     font-weight: 700;
   }
   .center { text-align: center; }
@@ -103,7 +117,7 @@ function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem
     margin-bottom: 1.5mm;
   }
   .sequence {
-    font-size: 34px;
+    font-size: ${sequenceSizePx}px;
     line-height: 1;
     font-weight: 900;
     margin: 0.5mm 0 1.5mm;
@@ -131,7 +145,7 @@ function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem
     padding: 1.5mm 0;
   }
   .item-name {
-    font-size: 16px;
+    font-size: ${itemNameSizePx}px;
     line-height: 1.1;
     font-weight: 900;
     margin-bottom: 0.8mm;
@@ -205,9 +219,10 @@ function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem
 
 export async function printInvoiceViaEscPosIntent(
   invoice: PrintableInvoice,
-  items: PrintableInvoiceItem[]
+  items: PrintableInvoiceItem[],
+  options?: ReceiptPrintOptions
 ): Promise<{ success: boolean; error?: string }> {
-  const html = buildReceiptHtml(invoice, items);
+  const html = buildReceiptHtml(invoice, items, options);
   const payload = JSON.stringify([html, html]);
 
   console.log('[ESC/POS] Building receipt HTML...');
