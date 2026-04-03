@@ -284,16 +284,63 @@ export async function printInvoiceViaEscPosIntent(
   console.log('[ESC/POS] Compressed payload size:', compressedBase64.length, 'bytes');
   console.log('[ESC/POS] Intent URL generated, attempting to launch...');
   console.log('[ESC/POS] Intent scheme: print-intent');
+  console.log('[ESC/POS] Full Intent URL:', intentUrl.substring(0, 100) + '...');
 
   try {
-    console.log('[ESC/POS] Launching intent via window.location.href');
-    window.location.href = intentUrl;
+    console.log('[ESC/POS] Method 1: Trying iframe approach');
+    
+    // Method 1: Try iframe first (most reliable on modern Android)
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+    
+    iframe.onload = () => {
+      console.log('[ESC/POS] Iframe loaded, removing...');
+      setTimeout(() => {
+        if (iframe.parentNode) {
+          document.body.removeChild(iframe);
+        }
+      }, 100);
+    };
+    
+    iframe.onerror = () => {
+      console.log('[ESC/POS] Iframe error (expected for intent scheme)');
+      if (iframe.parentNode) {
+        document.body.removeChild(iframe);
+      }
+    };
+    
+    iframe.src = intentUrl;
+    
+    // Fallback: If iframe doesn't work after timeout, try direct location
+    setTimeout(() => {
+      if (iframe.parentNode) {
+        console.log('[ESC/POS] Method 2: Iframe fallback to window.location');
+        document.body.removeChild(iframe);
+        
+        // Delay to ensure service has time to respond to first attempt
+        setTimeout(() => {
+          window.location.href = intentUrl;
+        }, 200);
+      }
+    }, 500);
+    
     // Return success - intent launch was attempted
     return { success: true, error: undefined };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     console.error('[ESC/POS] Failed to launch intent:', errorMsg);
-    return { success: false, error: `Failed to launch intent: ${errorMsg}` };
+    
+    // Last resort: try direct location anyway
+    try {
+      window.location.href = intentUrl;
+      return { success: true, error: undefined };
+    } catch (finalErr) {
+      return { success: false, error: `Failed to launch intent: ${errorMsg}` };
+    }
   }
 }
 
@@ -361,10 +408,19 @@ export function getEscPosEnvironmentStatus(): {
   userAgent: string;
   recommendation: string;
 } {
-  const isAndroid = /Android/i.test(navigator.userAgent);
+  // Multiple Android detection methods for compatibility
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isAndroid = 
+    /android/i.test(userAgent) ||
+    /linux.*mobile/i.test(userAgent) ||
+    (typeof navigator !== 'undefined' && 
+     'userAgentData' in navigator &&
+     navigator.userAgentData?.platform === 'Android');
+  
   const hasCompressionLibrary = typeof gzip === 'function';
+  
   const recommendation = !isAndroid
-    ? 'Use Android Chrome for ESC/POS Intent printing.'
+    ? 'Use Android device with Chrome for ESC/POS Intent printing. User Agent: ' + navigator.userAgent
     : !hasCompressionLibrary
       ? 'Compression library unavailable. Reload app and clear cache.'
       : 'Environment looks ready. If silent, verify open-escpos-print-service is installed and set as handler.';
