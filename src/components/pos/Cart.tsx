@@ -6,7 +6,7 @@ import { formatUSD, formatKHR, usdToKHR } from '../../lib/utils/currency';
 import { saveHeldCart, getHeldCarts, saveLocalInvoice, generateInvoiceNo, getOrCreateDeviceId, getLocalInvoice, type HeldCart, type LocalInvoice, type LocalInvoiceItem, type PaymentMethod } from '../../lib/client/db';
 import { syncToServer } from '../../lib/client/sync';
 import { formatDateTime } from '../../lib/utils/format';
-import { getDailySequenceFromInvoiceNo, printInvoiceViaEscPosIntent, type ReceiptPaperSize, type ReceiptPrintStyle } from '../../lib/client/printing';
+import { getDailySequenceFromInvoiceNo, printInvoiceViaEscPosIntent, type ReceiptPaperSize, type ReceiptPrintStyle, type ReceiptPrintMode } from '../../lib/client/printing';
 import { t } from '../../i18n';
 import { Button } from '../ui/Button';
 
@@ -31,7 +31,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   const [completedInvoice, setCompletedInvoice] = useState<LocalInvoice | null>(null);
   const [completedInvoiceItems, setCompletedInvoiceItems] = useState<LocalInvoiceItem[]>([]);
   const [showInlineInvoice, setShowInlineInvoice] = useState(false);
-  const [printSettings, setPrintSettings] = useState<{ autoPrintInvoice: boolean; receiptPrintMode: 'browser' | 'escpos-intent'; receiptPaperSize: ReceiptPaperSize; receiptCopies: 1 | 2; receiptStyle: ReceiptPrintStyle }>({
+  const [printSettings, setPrintSettings] = useState<{ autoPrintInvoice: boolean; receiptPrintMode: ReceiptPrintMode; receiptPaperSize: ReceiptPaperSize; receiptCopies: 1 | 2; receiptStyle: ReceiptPrintStyle }>({
     autoPrintInvoice: false,
     receiptPrintMode: 'browser',
     receiptPaperSize: '58mm',
@@ -253,7 +253,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   const handlePrintInvoiceWithData = async (invoice: LocalInvoice, itemsForPrint: LocalInvoiceItem[]) => {
     const isAndroid = /Android/i.test(navigator.userAgent);
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const shouldTryEscPos = isAndroid || printSettings.receiptPrintMode === 'escpos-intent';
+    const shouldTryEscPos = isAndroid && printSettings.receiptPrintMode === 'escpos-intent';
 
     if (shouldTryEscPos) {
       console.log('[POS] Attempting ESC/POS Intent print...');
@@ -269,7 +269,6 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
       console.warn('[POS] ESC/POS Intent failed:', result.error);
       const message = result.error || 'ESC/POS print failed';
       alert(`ESC/POS print failed. ${message}`);
-      // Fall through to browser print as fallback
     }
 
     // Browser fallback: If offline, show inline invoice and trigger print.

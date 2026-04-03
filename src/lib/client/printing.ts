@@ -21,6 +21,7 @@ export interface PrintableInvoiceItem {
 
 export type ReceiptPaperSize = '58mm' | '80mm';
 export type ReceiptPrintStyle = 'compact' | 'normal' | 'large';
+export type ReceiptPrintMode = 'browser' | 'escpos-intent';
 
 interface ReceiptPrintOptions {
   paperSize?: ReceiptPaperSize;
@@ -296,6 +297,32 @@ export async function printInvoiceViaEscPosIntent(
     console.error('[ESC/POS] Failed to launch intent:', errorMsg);
     return { success: false, error: `Failed to launch intent: ${errorMsg}` };
   }
+}
+
+export async function printEscPosTestReceipt(
+  options?: ReceiptPrintOptions
+): Promise<{ success: boolean; error?: string }> {
+  const now = new Date().toISOString();
+  return printInvoiceViaEscPosIntent(
+    {
+      invoiceNo: 'TEST-0001',
+      cashierName: 'Coffee POS',
+      createdAt: now,
+      totalKHR: 12300,
+      paidKHR: 20000,
+      changeKHR: 7700,
+      paymentMethod: 'cash'
+    },
+    [
+      {
+        id: crypto.randomUUID(),
+        nameSnapshot: 'Printer Test Item',
+        qty: 1,
+        lineTotalKHR: 12300
+      }
+    ],
+    options
+  );
 }
 
 /**

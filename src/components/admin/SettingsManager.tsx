@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
 import { useLanguageStore } from '../../lib/store';
 import { formatExchangeRate } from '../../lib/utils/currency';
-import { getEscPosEnvironmentStatus } from '../../lib/client/printing';
+import { getEscPosEnvironmentStatus, printEscPosTestReceipt } from '../../lib/client/printing';
 import { t } from '../../i18n';
 
 export function SettingsManager() {
@@ -18,6 +18,7 @@ export function SettingsManager() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [printerStatus, setPrinterStatus] = useState('');
+  const [testingPrint, setTestingPrint] = useState(false);
   
   useEffect(() => {
     const fetchSettings = async () => {
@@ -85,7 +86,35 @@ export function SettingsManager() {
     ].join(' | ');
     setPrinterStatus(summary);
   };
-  
+
+  const handlePrintTestReceipt = async () => {
+    setTestingPrint(true);
+    setError('');
+    setSuccess(false);
+
+    try {
+      const result = await printEscPosTestReceipt({
+        paperSize: receiptPaperSize,
+        copies: receiptCopies,
+        style: receiptStyle
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Test print failed');
+      }
+
+      setPrinterStatus(
+        language === 'km'
+          ? 'បានបើកបង្កាន់ដៃតេស្តទៅ open-escpos-print-service។'
+          : 'Test receipt sent to open-escpos-print-service.'
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Test print failed');
+    } finally {
+      setTestingPrint(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -151,9 +180,13 @@ export function SettingsManager() {
               <option value="escpos-intent">{language === 'km' ? 'ESC/POS Intent (Android)' : 'ESC/POS Intent (Android)'}</option>
             </select>
             <p className="text-sm text-gray-500 mt-2">
-              {language === 'km'
-                ? 'ESC/POS Intent ត្រូវការកម្មវិធី open-escpos-print-service នៅលើ Android។'
-                : 'ESC/POS Intent requires open-escpos-print-service installed on Android.'}
+              {receiptPrintMode === 'escpos-intent'
+                ? (language === 'km'
+                    ? 'ESC/POS Intent ត្រូវការកម្មវិធី open-escpos-print-service នៅលើ Android។'
+                    : 'ESC/POS Intent requires open-escpos-print-service installed on Android.')
+                : (language === 'km'
+                    ? 'Browser Print គឺជាវិធីស្តង់ដារ តែគុណភាពអាចទាបជាង native app។'
+                    : 'Browser Print is the standard path, but quality can be lower than a native app.')}
             </p>
           </div>
 
@@ -249,8 +282,8 @@ export function SettingsManager() {
                   {autoPrintInvoice
                     ? (receiptPrintMode === 'escpos-intent'
                         ? (language === 'km'
-                            ? 'បន្ទាប់ពីទូទាត់ជោគជ័យ វានឹងបញ្ជូនបង្កាន់ដៃទៅ ESC/POS app ដោយស្វ័យប្រវត្តិ។'
-                            : 'After successful payment, receipt will be sent to ESC/POS app automatically.')
+                            ? 'បន្ទាប់ពីទូទាត់ជោគជ័យ វានឹងបញ្ជូនបង្កាន់ដៃទៅ open-escpos-print-service ដោយស្វ័យប្រវត្តិ។'
+                            : 'After successful payment, receipt will be sent to open-escpos-print-service automatically.')
                         : (language === 'km'
                             ? 'វិក្កយបត្រនឹងបើកដោយស្វ័យប្រវត្តិនៅក្នុងផ្ទាំងថ្មីសម្រាប់បោះពុម្ព។'
                             : 'Invoice will automatically open in a new tab for printing.'))
@@ -259,9 +292,9 @@ export function SettingsManager() {
                         : 'Invoice will be shown and cashier can choose to print manually.')}
                 </p>
                 <p className="text-xs text-blue-500 mt-2">
-                  {language === 'km'
-                    ? `ចម្លង: ${receiptCopies === 2 ? 'ទ្វេដង' : 'តែមួយ'} • រចនាប័ទ្ម: ${receiptStyle}`
-                    : `Copies: ${receiptCopies === 2 ? 'Double' : 'Single'} • Style: ${receiptStyle}`}
+                    {language === 'km'
+                      ? `ចម្លង: ${receiptCopies === 2 ? 'ទ្វេដង' : 'តែមួយ'} • រចនាប័ទ្ម: ${receiptStyle}`
+                      : `Copies: ${receiptCopies === 2 ? 'Double' : 'Single'} • Style: ${receiptStyle}`}
                 </p>
               </div>
             </div>
@@ -274,12 +307,19 @@ export function SettingsManager() {
                   {language === 'km' ? 'ពិនិត្យម៉ាស៊ីនព្រីន ESC/POS' : 'Check ESC/POS Printer'}
                 </p>
                 <p className="text-sm text-gray-500">
-                  {language === 'km' ? 'ពិនិត្យភាពរួចរាល់របស់ឧបករណ៍សម្រាប់ Intent Print' : 'Verify device readiness for intent printing'}
+                  {language === 'km'
+                    ? 'ពិនិត្យភាពរួចរាល់របស់ឧបករណ៍សម្រាប់ open-escpos-print-service'
+                    : 'Verify device readiness for open-escpos-print-service'}
                 </p>
               </div>
-              <Button variant="outline" onClick={handleCheckPrinter}>
-                {language === 'km' ? 'ពិនិត្យ' : 'Check'}
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button variant="outline" onClick={handleCheckPrinter}>
+                  {language === 'km' ? 'ពិនិត្យ' : 'Check'}
+                </Button>
+                <Button variant="primary" onClick={handlePrintTestReceipt} loading={testingPrint}>
+                  {language === 'km' ? 'បោះពុម្ពតេស្ត' : 'Print Test'}
+                </Button>
+              </div>
             </div>
             {printerStatus && (
               <p className="text-sm text-gray-700 mt-3">{printerStatus}</p>

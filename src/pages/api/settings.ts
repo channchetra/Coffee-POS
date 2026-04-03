@@ -83,7 +83,9 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     }
 
     if (body.receiptPrintMode !== undefined) {
-      const value = body.receiptPrintMode === 'escpos-intent' ? 'escpos-intent' : 'browser';
+      const value = ['browser', 'escpos-intent'].includes(body.receiptPrintMode)
+        ? body.receiptPrintMode
+        : 'browser';
       setSetting('receiptPrintMode', value);
     }
 
