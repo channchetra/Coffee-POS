@@ -73,9 +73,9 @@ function buildReceiptHtml(
   const sequence = getDailySequenceFromInvoiceNo(invoice.invoiceNo);
   const paperSize = options?.paperSize === '80mm' ? '80mm' : '58mm';
   const paperWidthMm = paperSize === '80mm' ? 80 : 58;
-  const pagePaddingMm = paperSize === '80mm' ? 2 : 1.5;
-  const itemNameSizePx = paperSize === '80mm' ? 18 : 16;
-  const sequenceSizePx = paperSize === '80mm' ? 40 : 34;
+  const pagePaddingMm = paperSize === '80mm' ? 1.8 : 1.1;
+  const itemNameSizePx = paperSize === '80mm' ? 20 : 19;
+  const sequenceSizePx = paperSize === '80mm' ? 38 : 32;
   const itemRows = items.map((item) => {
     const names = item.nameSnapshot.split(' / ');
     const englishName = escapeHtml((names[0] || item.nameSnapshot).trim());
@@ -106,21 +106,21 @@ function buildReceiptHtml(
   .receipt {
     width: 100%;
     box-sizing: border-box;
-    padding: 2mm ${pagePaddingMm}mm;
+    padding: 1.5mm ${pagePaddingMm}mm;
     font-weight: 700;
   }
   .center { text-align: center; }
   .title {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 900;
     letter-spacing: 0.5px;
-    margin-bottom: 1.5mm;
+    margin-bottom: 1mm;
   }
   .sequence {
     font-size: ${sequenceSizePx}px;
     line-height: 1;
     font-weight: 900;
-    margin: 0.5mm 0 1.5mm;
+    margin: 0.5mm 0 1mm;
   }
   .invoice-no,
   .meta,
@@ -128,27 +128,27 @@ function buildReceiptHtml(
   .section-label,
   .totals,
   .item-meta {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
   }
   .divider {
     border-top: 1px solid #000;
-    margin: 3mm 0;
+    margin: 2.5mm 0;
   }
   .section-label {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 1.5mm;
-    font-size: 11px;
+    margin-bottom: 1mm;
+    font-size: 10px;
   }
   .item-row {
-    padding: 1.5mm 0;
+    padding: 1.2mm 0;
   }
   .item-name {
     font-size: ${itemNameSizePx}px;
     line-height: 1.1;
     font-weight: 900;
-    margin-bottom: 0.8mm;
+    margin-bottom: 0.6mm;
   }
   .item-meta,
   .total-row {
@@ -163,23 +163,23 @@ function buildReceiptHtml(
     font-weight: 800;
   }
   .item-qty {
-    font-size: 12px;
+    font-size: 11px;
   }
   .item-amount {
-    font-size: 12px;
+    font-size: 11px;
   }
   .total-row {
-    margin: 1.2mm 0;
-    font-size: 12px;
+    margin: 1mm 0;
+    font-size: 11px;
   }
   .grand-total {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 900;
   }
   .footer {
     text-align: center;
-    margin-top: 4mm;
-    font-size: 12px;
+    margin-top: 2.5mm;
+    font-size: 11px;
     font-weight: 900;
   }
 </style>
