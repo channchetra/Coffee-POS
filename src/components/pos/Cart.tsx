@@ -246,7 +246,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
 
   const handlePrintInvoiceWithData = async (invoice: LocalInvoice, itemsForPrint: LocalInvoiceItem[]) => {
     if (printSettings.receiptPrintMode === 'escpos-intent') {
-      const printed = await printInvoiceViaEscPosIntent(invoice, itemsForPrint, language);
+      const printed = await printInvoiceViaEscPosIntent(invoice, itemsForPrint);
       if (printed) {
         return;
       }

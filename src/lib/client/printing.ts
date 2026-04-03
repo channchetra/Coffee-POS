@@ -1,4 +1,3 @@
-import type { Language } from '../../i18n';
 import { formatDateTime } from '../utils/format';
 import { formatKHR } from '../utils/currency';
 
@@ -64,19 +63,36 @@ async function gzipToBase64(input: string): Promise<string | null> {
   return arrayBufferToBase64(compressed);
 }
 
-function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem[], language: Language): string {
-  const isKhmer = language === 'km';
+function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem[]): string {
   const sequence = getDailySequenceFromInvoiceNo(invoice.invoiceNo);
 
-  const rows = items.map((item) => {
-    const names = item.nameSnapshot.split(' / ');
-    const displayName = escapeHtml(names[isKhmer ? 1 : 0] || item.nameSnapshot);
-    return `<tr><td>${displayName}</td><td style="text-align:center;">${item.qty}</td><td style="text-align:right;">${escapeHtml(formatKHR(item.lineTotalKHR))}</td></tr>`;
-  }).join('');
+  const lines: string[] = [];
+  lines.push('RECEIPT');
+  lines.push(`#${sequence}`);
+  lines.push(invoice.invoiceNo);
+  lines.push(formatDateTime(invoice.createdAt, 'en-US'));
+  lines.push(`Cashier: ${invoice.cashierName}`);
+  lines.push('--------------------------------');
+  lines.push('ITEM                    QTY   AMT');
 
-  const changeLine = invoice.paymentMethod === 'bank'
-    ? `<div class="line"><span>${isKhmer ? 'ប្រាក់អាប់' : 'Change'}</span><span>${isKhmer ? 'គ្មានប្រាក់អាប់' : 'No Change'}</span></div>`
-    : `<div class="line"><span>${isKhmer ? 'ប្រាក់អាប់' : 'Change'}</span><span>${escapeHtml(formatKHR(invoice.changeKHR))}</span></div>`;
+  for (const item of items) {
+    const names = item.nameSnapshot.split(' / ');
+    const englishName = (names[0] || item.nameSnapshot).trim();
+    const amount = formatKHR(item.lineTotalKHR);
+    const nameCol = englishName.length > 22 ? `${englishName.slice(0, 22)}` : englishName.padEnd(22, ' ');
+    const qtyCol = String(item.qty).padStart(3, ' ');
+    const amountCol = amount.padStart(7, ' ');
+    lines.push(`${nameCol}${qtyCol}${amountCol}`);
+  }
+
+  lines.push('--------------------------------');
+  lines.push(`TOTAL: ${formatKHR(invoice.totalKHR)}`);
+  lines.push(`PAID:  ${formatKHR(invoice.paidKHR)}`);
+  lines.push(invoice.paymentMethod === 'bank' ? 'CHANGE: No Change' : `CHANGE: ${formatKHR(invoice.changeKHR)}`);
+  lines.push('--------------------------------');
+  lines.push('Thank you!');
+
+  const receiptText = escapeHtml(lines.join('\n'));
 
   return `<!doctype html>
 <html>
@@ -86,58 +102,20 @@ function buildReceiptHtml(invoice: PrintableInvoice, items: PrintableInvoiceItem
   @page { margin: 0mm; }
   body { margin: 0; padding: 0; font-family: monospace; }
   .receipt { width: 76mm; padding: 2mm; }
-  .center { text-align: center; }
-  .queue { font-size: 40px; font-weight: bold; line-height: 1; margin: 6px 0; }
-  .meta { font-size: 12px; margin: 2px 0; }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
-  th, td { padding: 2px 0; vertical-align: top; }
-  .line { display: flex; justify-content: space-between; font-size: 13px; margin: 3px 0; }
-  .strong { font-weight: bold; }
-  .divider { border-top: 1px dashed #000; margin: 6px 0; }
+  pre { margin: 0; white-space: pre; font-size: 12px; line-height: 1.3; }
 </style>
 </head>
 <body>
-  <div class="receipt">
-    <div class="center">
-      <div>${isKhmer ? 'វិក្កយបត្រ' : 'Receipt'}</div>
-      <div class="queue">#${sequence}</div>
-      <div class="meta">${escapeHtml(invoice.invoiceNo)}</div>
-      <div class="meta">${escapeHtml(formatDateTime(invoice.createdAt, isKhmer ? 'km' : 'en-US'))}</div>
-      <div class="meta">${isKhmer ? 'អ្នកគិតប្រាក់' : 'Cashier'}: ${escapeHtml(invoice.cashierName)}</div>
-    </div>
-
-    <div class="divider"></div>
-
-    <table>
-      <thead>
-        <tr>
-          <th style="text-align:left;">${isKhmer ? 'មុខទំនិញ' : 'Item'}</th>
-          <th style="text-align:center;">${isKhmer ? 'ចំនួន' : 'Qty'}</th>
-          <th style="text-align:right;">${isKhmer ? 'តម្លៃ' : 'Amount'}</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-
-    <div class="divider"></div>
-
-    <div class="line strong"><span>${isKhmer ? 'សរុប' : 'Total'}</span><span>${escapeHtml(formatKHR(invoice.totalKHR))}</span></div>
-    <div class="line"><span>${isKhmer ? 'បានបង់' : 'Paid'}</span><span>${escapeHtml(formatKHR(invoice.paidKHR))}</span></div>
-    ${changeLine}
-
-    <div class="divider"></div>
-    <div class="center meta">${isKhmer ? 'អរគុណ!' : 'Thank you!'}</div>
-  </div>
+  <div class="receipt"><pre>${receiptText}</pre></div>
 </body>
 </html>`;
 }
 
 export async function printInvoiceViaEscPosIntent(
   invoice: PrintableInvoice,
-  items: PrintableInvoiceItem[],
-  language: Language
+  items: PrintableInvoiceItem[]
 ): Promise<boolean> {
-  const html = buildReceiptHtml(invoice, items, language);
+  const html = buildReceiptHtml(invoice, items);
   const payload = JSON.stringify([html]);
   const compressedBase64 = await gzipToBase64(payload);
 
