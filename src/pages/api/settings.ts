@@ -23,10 +23,12 @@ export const GET: APIRoute = async ({ cookies }) => {
     
     const defaultExchangeRateKHR = getSetting('defaultExchangeRateKHR') || 4000;
     const autoPrintInvoice = getSetting('autoPrintInvoice') || false;
+    const receiptPrintMode = getSetting('receiptPrintMode') || 'browser';
     
     return new Response(JSON.stringify({ 
       defaultExchangeRateKHR,
-      autoPrintInvoice
+      autoPrintInvoice,
+      receiptPrintMode
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
@@ -72,6 +74,11 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     // Update auto print setting if provided
     if (body.autoPrintInvoice !== undefined) {
       setSetting('autoPrintInvoice', body.autoPrintInvoice);
+    }
+
+    if (body.receiptPrintMode !== undefined) {
+      const value = body.receiptPrintMode === 'escpos-intent' ? 'escpos-intent' : 'browser';
+      setSetting('receiptPrintMode', value);
     }
     
     return new Response(JSON.stringify({ success: true }), {

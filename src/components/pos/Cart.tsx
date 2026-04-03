@@ -6,6 +6,7 @@ import { formatUSD, formatKHR, usdToKHR } from '../../lib/utils/currency';
 import { saveHeldCart, getHeldCarts, saveLocalInvoice, generateInvoiceNo, getOrCreateDeviceId, getLocalInvoice, type HeldCart, type LocalInvoice, type LocalInvoiceItem, type PaymentMethod } from '../../lib/client/db';
 import { syncToServer } from '../../lib/client/sync';
 import { formatDateTime } from '../../lib/utils/format';
+import { getDailySequenceFromInvoiceNo, printInvoiceViaEscPosIntent } from '../../lib/client/printing';
 import { t } from '../../i18n';
 import { Button } from '../ui/Button';
 
@@ -30,6 +31,10 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   const [completedInvoice, setCompletedInvoice] = useState<LocalInvoice | null>(null);
   const [completedInvoiceItems, setCompletedInvoiceItems] = useState<LocalInvoiceItem[]>([]);
   const [showInlineInvoice, setShowInlineInvoice] = useState(false);
+  const [printSettings, setPrintSettings] = useState<{ autoPrintInvoice: boolean; receiptPrintMode: 'browser' | 'escpos-intent' }>({
+    autoPrintInvoice: false,
+    receiptPrintMode: 'browser'
+  });
   
   // Load held carts on mount to show badge count
   useEffect(() => {
@@ -39,6 +44,24 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
     };
     loadHeldCarts();
   }, [setHeldCarts]);
+
+  useEffect(() => {
+    const loadPrintSettings = async () => {
+      try {
+        const response = await fetch('/api/settings');
+        if (!response.ok) return;
+        const data = await response.json();
+        setPrintSettings({
+          autoPrintInvoice: !!data.autoPrintInvoice,
+          receiptPrintMode: data.receiptPrintMode === 'escpos-intent' ? 'escpos-intent' : 'browser'
+        });
+      } catch {
+        // Keep default print settings when request fails.
+      }
+    };
+
+    loadPrintSettings();
+  }, []);
   
   const subtotal = getSubtotal(); // USD cents for compatibility
   // Calculate KHR total directly from items' priceKHR (source of truth)
@@ -165,6 +188,12 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
       
       setCompletedInvoice(invoice);
       setCompletedInvoiceItems(invoiceItems); // Store items for offline invoice view
+
+      if (printSettings.autoPrintInvoice) {
+        setTimeout(() => {
+          void handlePrintInvoiceWithData(invoice, invoiceItems);
+        }, 250);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed');
     } finally {
@@ -202,26 +231,40 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   
   const handlePrintInvoice = async () => {
     if (!completedInvoice) return;
-    
-    // If offline, show inline invoice and trigger print
+
+    let itemsForPrint = completedInvoiceItems;
+    if (itemsForPrint.length === 0) {
+      const localData = await getLocalInvoice(completedInvoice.id);
+      if (localData) {
+        itemsForPrint = localData.items;
+        setCompletedInvoiceItems(localData.items);
+      }
+    }
+
+    await handlePrintInvoiceWithData(completedInvoice, itemsForPrint);
+  };
+
+  const handlePrintInvoiceWithData = async (invoice: LocalInvoice, itemsForPrint: LocalInvoiceItem[]) => {
+    if (printSettings.receiptPrintMode === 'escpos-intent') {
+      const printed = await printInvoiceViaEscPosIntent(invoice, itemsForPrint, language);
+      if (printed) {
+        return;
+      }
+    }
+
+    // Browser fallback: If offline, show inline invoice and trigger print.
     if (!navigator.onLine) {
-      if (completedInvoiceItems.length === 0) {
-        const localData = await getLocalInvoice(completedInvoice.id);
-        if (localData) {
-          setCompletedInvoiceItems(localData.items);
-        }
-      }
       setShowInlineInvoice(true);
-      // Delay print to allow render
       setTimeout(() => window.print(), 300);
-    } else {
-      // Online - open in new tab and print
-      const printWindow = window.open(`/invoice/${completedInvoice.id}`, '_blank');
-      if (printWindow) {
-        printWindow.onload = () => {
-          setTimeout(() => printWindow.print(), 500);
-        };
-      }
+      return;
+    }
+
+    // Online browser print - open in new tab and print.
+    const printWindow = window.open(`/invoice/${invoice.id}`, '_blank');
+    if (printWindow) {
+      printWindow.onload = () => {
+        setTimeout(() => printWindow.print(), 500);
+      };
     }
   };
   
@@ -231,6 +274,8 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   
   // Inline Invoice View (for offline viewing/printing)
   if (completedInvoice && showInlineInvoice) {
+    const dailySequence = getDailySequenceFromInvoiceNo(completedInvoice.invoiceNo);
+
     return (
       <>
         {/* Print-only styles for offline invoice */}
@@ -269,6 +314,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
                   <img src="/favicon.svg" alt="Logo" className="w-8 h-8" />
                   <h1 className="text-xl font-bold text-gray-900">{t(language, 'app.name')}</h1>
                 </div>
+                <p className="text-4xl font-black tracking-tight text-gray-900 leading-none">#{dailySequence}</p>
                 <p className="text-sm text-gray-600">{t(language, 'invoice.receipt')}</p>
               </div>
             
@@ -356,6 +402,8 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
   
   // Payment Success Screen (inline in cart area)
   if (completedInvoice) {
+    const dailySequence = getDailySequenceFromInvoiceNo(completedInvoice.invoiceNo);
+
     return (
       <div className="flex flex-col h-full glass-panel">
         <div className="flex-1 flex flex-col items-center justify-center p-6">
@@ -369,6 +417,8 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
           
           {/* Invoice Summary */}
           <div className="w-full bg-gray-50 rounded-2xl p-4 mb-6">
+            <p className="text-sm text-gray-500 mb-1">{language === 'km' ? 'លេខរៀងថ្ងៃនេះ' : 'Daily Sequence'}</p>
+            <p className="font-black text-4xl leading-none mb-3">#{dailySequence}</p>
             <p className="text-sm text-gray-500 mb-1">{t(language, 'invoice.invoiceNo')}</p>
             <p className="font-mono font-bold text-lg mb-2">{completedInvoice.invoiceNo}</p>
             
@@ -431,6 +481,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
             <h2 className="text-xl font-bold text-gray-900">{t(language, 'payment.title')}</h2>
             <button
               onClick={handleCancelPayment}
+              aria-label={language === 'km' ? 'បិទការបង់ប្រាក់' : 'Close payment'}
               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-white/50 rounded-xl transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -608,6 +659,7 @@ export function Cart({ onClose, showCloseButton }: CartProps) {
             {showCloseButton && (
               <button
                 onClick={onClose}
+                aria-label={language === 'km' ? 'បិទកន្រ្តក' : 'Close cart'}
                 className="lg:hidden p-2 text-gray-500 hover:text-gray-700 hover:bg-white/50 rounded-xl transition-colors"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

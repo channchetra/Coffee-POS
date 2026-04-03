@@ -8,6 +8,7 @@ export function SettingsManager() {
   const { language } = useLanguageStore();
   const [exchangeRate, setExchangeRate] = useState('4000');
   const [autoPrintInvoice, setAutoPrintInvoice] = useState(false);
+  const [receiptPrintMode, setReceiptPrintMode] = useState<'browser' | 'escpos-intent'>('browser');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -21,6 +22,7 @@ export function SettingsManager() {
         const data = await response.json();
         setExchangeRate(data.defaultExchangeRateKHR?.toString() || '4000');
         setAutoPrintInvoice(data.autoPrintInvoice || false);
+        setReceiptPrintMode(data.receiptPrintMode === 'escpos-intent' ? 'escpos-intent' : 'browser');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error loading settings');
       } finally {
@@ -47,7 +49,8 @@ export function SettingsManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           defaultExchangeRateKHR: rate,
-          autoPrintInvoice: autoPrintInvoice
+          autoPrintInvoice: autoPrintInvoice,
+          receiptPrintMode
         })
       });
       
@@ -93,6 +96,7 @@ export function SettingsManager() {
               type="number"
               value={exchangeRate}
               onChange={(e) => setExchangeRate(e.target.value)}
+              aria-label={language === 'km' ? 'អត្រាប្តូរប្រាក់លំនាំដើម' : 'Default exchange rate'}
               className="input input-lg pl-24 pr-16 text-right text-xl font-bold"
               min="1"
             />
@@ -112,6 +116,26 @@ export function SettingsManager() {
         </h3>
         
         <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {language === 'km' ? 'វិធីបោះពុម្ពបង្កាន់ដៃ' : 'Receipt Print Method'}
+            </label>
+            <select
+              value={receiptPrintMode}
+              onChange={(e) => setReceiptPrintMode(e.target.value as 'browser' | 'escpos-intent')}
+              aria-label={language === 'km' ? 'វិធីបោះពុម្ពបង្កាន់ដៃ' : 'Receipt print method'}
+              className="input"
+            >
+              <option value="browser">{language === 'km' ? 'Browser Print (ធម្មតា)' : 'Browser Print (Standard)'}</option>
+              <option value="escpos-intent">{language === 'km' ? 'ESC/POS Intent (Android)' : 'ESC/POS Intent (Android)'}</option>
+            </select>
+            <p className="text-sm text-gray-500 mt-2">
+              {language === 'km'
+                ? 'ESC/POS Intent ត្រូវការកម្មវិធី open-escpos-print-service នៅលើ Android។'
+                : 'ESC/POS Intent requires open-escpos-print-service installed on Android.'}
+            </p>
+          </div>
+
           <label className="flex items-center gap-4 p-4 bg-gray-50/50 rounded-2xl cursor-pointer hover:bg-gray-100/50 transition-colors">
             <div className="relative">
               <input
@@ -145,12 +169,16 @@ export function SettingsManager() {
                   {language === 'km' ? 'ព័ត៌មាន' : 'Info'}
                 </p>
                 <p className="text-sm text-blue-600">
-                  {autoPrintInvoice 
-                    ? (language === 'km' 
-                        ? 'វិក្កយបត្រនឹងបើកដោយស្វ័យប្រវត្តិនៅក្នុងផ្ទាំងថ្មីសម្រាប់បោះពុម្ព។' 
-                        : 'Invoice will automatically open in a new tab for printing.')
-                    : (language === 'km' 
-                        ? 'វិក្កយបត្រនឹងត្រូវបានបង្ហាញ ហើយអ្នកគិតប្រាក់អាចជ្រើសរើសបោះពុម្ពដោយដៃ។' 
+                  {autoPrintInvoice
+                    ? (receiptPrintMode === 'escpos-intent'
+                        ? (language === 'km'
+                            ? 'បន្ទាប់ពីទូទាត់ជោគជ័យ វានឹងបញ្ជូនបង្កាន់ដៃទៅ ESC/POS app ដោយស្វ័យប្រវត្តិ។'
+                            : 'After successful payment, receipt will be sent to ESC/POS app automatically.')
+                        : (language === 'km'
+                            ? 'វិក្កយបត្រនឹងបើកដោយស្វ័យប្រវត្តិនៅក្នុងផ្ទាំងថ្មីសម្រាប់បោះពុម្ព។'
+                            : 'Invoice will automatically open in a new tab for printing.'))
+                    : (language === 'km'
+                        ? 'វិក្កយបត្រនឹងត្រូវបានបង្ហាញ ហើយអ្នកគិតប្រាក់អាចជ្រើសរើសបោះពុម្ពដោយដៃ។'
                         : 'Invoice will be shown and cashier can choose to print manually.')}
                 </p>
               </div>

@@ -266,15 +266,25 @@ export async function getCachedUser(username: string): Promise<CachedUser | unde
   return db.cachedUsers.where('username').equals(username).first();
 }
 
+function getLocalDateParts(date: Date): { compact: string } {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return {
+    compact: `${year}${month}${day}`
+  };
+}
+
 // Generate invoice number with device ID to prevent duplicates across offline devices
 export async function generateInvoiceNo(): Promise<string> {
   const today = new Date();
-  const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+  const dateParts = getLocalDateParts(today);
   const deviceId = await getOrCreateDeviceId();
   // Use first 4 chars of device ID as device prefix
   const devicePrefix = deviceId.replace(/-/g, '').substring(0, 4).toUpperCase();
-  const count = await db.invoices.where('createdAt').startsWith(today.toISOString().split('T')[0]).count();
+  const invoicePrefix = `INV-${dateParts.compact}-${devicePrefix}-`;
+  const count = await db.invoices.where('invoiceNo').startsWith(invoicePrefix).count();
   const seq = (count + 1).toString().padStart(4, '0');
   // Format: INV-YYYYMMDD-XXXX-0001 (XXXX = device prefix)
-  return `INV-${dateStr}-${devicePrefix}-${seq}`;
+  return `${invoicePrefix}${seq}`;
 }

@@ -3,6 +3,7 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { useLanguageStore } from '../../lib/store';
 import { getLocalInvoice, type LocalInvoice, type LocalInvoiceItem } from '../../lib/client/db';
+import { getDailySequenceFromInvoiceNo } from '../../lib/client/printing';
 import { formatUSD, formatKHR, formatExchangeRate } from '../../lib/utils/currency';
 import { formatDateTime } from '../../lib/utils/format';
 import { t } from '../../i18n';
@@ -137,6 +138,8 @@ export function InvoiceView({ invoiceId }: InvoiceViewProps) {
     synced: 'success',
     error: 'danger'
   } as const;
+
+  const dailySequence = getDailySequenceFromInvoiceNo(invoice.invoiceNo);
   
   return (
     <div className="min-h-screen bg-gray-100 p-4">
@@ -150,6 +153,7 @@ export function InvoiceView({ invoiceId }: InvoiceViewProps) {
           <select
             value={printMode}
             onChange={(e) => setPrintMode(e.target.value as 'receipt' | 'a4')}
+            aria-label={language === 'km' ? 'ទម្រង់បោះពុម្ព' : 'Print format'}
             className="input py-2 px-3"
           >
             <option value="receipt">{t(language, 'invoice.printReceipt')}</option>
@@ -167,6 +171,7 @@ export function InvoiceView({ invoiceId }: InvoiceViewProps) {
         {/* Header */}
         <div className="invoice-header text-center mb-6">
           <h1 className="invoice-title text-2xl font-bold text-gray-900">{t(language, 'app.name')}</h1>
+          <p className="text-5xl font-black tracking-tight text-gray-900 leading-none my-1">#{dailySequence}</p>
           <p className="text-gray-500">123 Coffee Street, Phnom Penh</p>
         </div>
         
