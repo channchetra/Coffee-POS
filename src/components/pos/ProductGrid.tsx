@@ -26,7 +26,7 @@ export function ProductGrid() {
       try {
         const [productsRes, categoriesRes] = await Promise.all([
           fetch('/api/products'),
-          fetch('/api/admin/categories')
+          fetch('/api/categories')
         ]);
         
         if (productsRes.ok) {

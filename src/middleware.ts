@@ -8,7 +8,7 @@ const protectedRoutes = ['/pos', '/admin', '/invoice'];
 const publicRoutes = ['/', '/login', '/api/auth/login', '/api/auth/logout'];
 
 // API routes that require authentication
-const protectedApiRoutes = ['/api/products', '/api/sync', '/api/settings', '/api/admin', '/api/upload'];
+const protectedApiRoutes = ['/api/products', '/api/categories', '/api/sync', '/api/settings', '/api/admin', '/api/upload'];
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;

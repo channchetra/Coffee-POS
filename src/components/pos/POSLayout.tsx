@@ -29,8 +29,8 @@ export function POSLayout() {
   const cartItemCount = items.reduce((sum, item) => sum + item.qty, 0);
   
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-br from-slate-100 via-gray-50 to-stone-100 bg-pattern">
-      <Header />
+    <div className="h-screen supports-[height:100dvh]:h-[100dvh] flex flex-col overflow-hidden bg-gradient-to-br from-slate-100 via-gray-50 to-stone-100 bg-pattern">
+      <Header showFullscreen />
       
       <div className="flex-1 flex overflow-hidden relative">
         {/* Products panel */}

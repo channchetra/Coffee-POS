@@ -7,17 +7,60 @@ import { t } from '../../i18n';
 interface HeaderProps {
   showLogout?: boolean;
   showSync?: boolean;
+  /** Show the fullscreen toggle (POS screens on tablets) */
+  showFullscreen?: boolean;
 }
 
-export function Header({ showLogout = true, showSync = true }: HeaderProps) {
+export function Header({ showLogout = true, showSync = true, showFullscreen = false }: HeaderProps) {
   const { user, setUser, isOnline } = useAuthStore();
   const { language } = useLanguageStore();
   const [mounted, setMounted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   // Avoid hydration mismatch for online/offline status
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Track fullscreen state (with WebKit prefix for older Android WebViews)
+  useEffect(() => {
+    if (!mounted) return;
+    const onChange = () => {
+      setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange as any);
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange);
+      document.removeEventListener('webkitfullscreenchange', onChange as any);
+    };
+  }, [mounted]);
+
+  // Fullscreen API is not available on all browsers (e.g. iOS Safari)
+  const fullscreenSupported = mounted && !!(
+    document.fullscreenEnabled || (document as any).webkitFullscreenEnabled
+  );
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else {
+          await (document as any).webkitExitFullscreen();
+        }
+      } else {
+        const el = document.documentElement as any;
+        if (el.requestFullscreen) {
+          await el.requestFullscreen();
+        } else {
+          await el.webkitRequestFullscreen();
+        }
+      }
+    } catch (err) {
+      console.error('Fullscreen toggle failed:', err);
+    }
+  };
   
   const handleLogout = async () => {
     try {
@@ -61,6 +104,35 @@ export function Header({ showLogout = true, showSync = true }: HeaderProps) {
           
           <LanguageToggle />
           
+          {/* Fullscreen toggle - POS tablets */}
+          {showFullscreen && fullscreenSupported && (
+            <button
+              onClick={toggleFullscreen}
+              className="flex items-center gap-2 px-2.5 md:px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/50 rounded-xl transition-colors flex-shrink-0"
+              title={isFullscreen
+                ? (language === 'km' ? 'ចាកចេញពីអេក្រង់ពេញ' : 'Exit fullscreen')
+                : (language === 'km' ? 'អេក្រង់ពេញ' : 'Fullscreen')}
+              aria-label={isFullscreen
+                ? (language === 'km' ? 'ចាកចេញពីអេក្រង់ពេញ' : 'Exit fullscreen')
+                : (language === 'km' ? 'អេក្រង់ពេញ' : 'Enter fullscreen')}
+            >
+              {isFullscreen ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V6a2 2 0 012-2h2M16 4h2a2 2 0 012 2v2M20 16v2a2 2 0 01-2 2h-2M8 20H6a2 2 0 01-2-2v-2" />
+                </svg>
+              )}
+              <span className="hidden md:inline">
+                {isFullscreen
+                  ? (language === 'km' ? 'ចាកចេញ' : 'Exit')
+                  : (language === 'km' ? 'ពេញអេក្រង់' : 'Fullscreen')}
+              </span>
+            </button>
+          )}
+
           {/* Admin link - icon only on mobile */}
           {user?.role === 'admin' && (
             <a

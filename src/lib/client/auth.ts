@@ -1,12 +1,9 @@
 import { cacheUser, getCachedUser, type CachedUser } from './db';
+import { sha256Hex } from '../utils/sha256';
 
 // Simple hash for offline verification (not cryptographically secure, but sufficient for offline check)
 async function simpleHash(str: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(str);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return sha256Hex(str);
 }
 
 export interface AuthUser {
@@ -20,15 +17,30 @@ export interface LoginResult {
   user?: AuthUser;
   error?: string;
   isOffline?: boolean;
+  /** True when the server could not be reached (network error / timeout), regardless of navigator.onLine */
+  networkError?: boolean;
 }
+
+// Server reachability can be wrong (e.g. WiFi up but POS server down), so bound
+// the login request and treat a timeout the same as being offline.
+const LOGIN_TIMEOUT_MS = 8000;
 
 export async function loginOnline(username: string, password: string, rememberMe: boolean = false): Promise<LoginResult> {
   try {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, rememberMe })
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), LOGIN_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, rememberMe }),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
     
     const data = await response.json();
     
@@ -55,8 +67,8 @@ export async function loginOnline(username: string, password: string, rememberMe
       }
     };
   } catch (error) {
-    // Network error - try offline login
-    return { success: false, error: 'Network error. Try offline login.' };
+    // Network error or timeout - try offline login
+    return { success: false, error: 'Server unreachable. Try offline login.', networkError: true };
   }
 }
 
@@ -96,8 +108,8 @@ export async function login(username: string, password: string, rememberMe: bool
   if (navigator.onLine) {
     const result = await loginOnline(username, password, rememberMe);
     if (result.success) return result;
-    // If online login fails due to network, try offline
-    if (result.error?.includes('Network')) {
+    // If online login failed because the server is unreachable, fall back to cached credentials
+    if (result.networkError) {
       return loginOffline(username, password);
     }
     return result;

@@ -86,6 +86,11 @@ export function LoginForm() {
       const result = await login(username, password, rememberMe);
       
       if (!result.success) {
+        // If the server was unreachable (not a bad password), reflect real
+        // connectivity in the UI and show the offline hint.
+        if (result.networkError) {
+          setOnline(false);
+        }
         setError(result.error || t(language, 'auth.invalidCredentials'));
         return;
       }
