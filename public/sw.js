@@ -1,4 +1,4 @@
-const CACHE_NAME = 'coffee-pos-v3';
+const CACHE_NAME = 'coffee-pos-v4';
 const STATIC_ASSETS = [
   '/',
   '/login',
@@ -104,7 +104,9 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('.js') ||
     url.pathname.endsWith('.svg') ||
     url.pathname.endsWith('.png') ||
-    url.pathname.endsWith('.jpg')
+    url.pathname.endsWith('.jpg') ||
+    url.pathname.endsWith('.webp') ||
+    url.pathname.endsWith('.avif')
   ) {
     event.respondWith(
       caches.match(request)

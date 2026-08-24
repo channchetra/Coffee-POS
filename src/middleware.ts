@@ -27,6 +27,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       pathname.endsWith('.svg') ||
       pathname.endsWith('.png') ||
       pathname.endsWith('.jpg') ||
+      pathname.endsWith('.webp') ||
+      pathname.endsWith('.avif') ||
       pathname.endsWith('.ico') ||
       pathname.endsWith('.js') ||
       pathname.endsWith('.css') ||

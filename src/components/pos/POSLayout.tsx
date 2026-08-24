@@ -2,45 +2,96 @@ import React, { useEffect, useState } from 'react';
 import { Header } from '../layout/Header';
 import { ProductGrid } from './ProductGrid';
 import { Cart } from './Cart';
-import { useAuthStore, useCartStore } from '../../lib/store';
+import { CategoryFilter } from './CategoryFilter';
+import { SearchBar } from './SearchBar';
+import { useAuthStore, useCartStore, useProductsStore, useLanguageStore } from '../../lib/store';
+import { t } from '../../i18n';
 
 export function POSLayout() {
   const { setOnline } = useAuthStore();
   const { items } = useCartStore();
+  const { searchQuery, setSearchQuery, setSelectedCategory } = useProductsStore();
+  const { language } = useLanguageStore();
   const [showCart, setShowCart] = useState(false);
-  
+  const [searchMode, setSearchMode] = useState(false);
+
   useEffect(() => {
     // Listen for online/offline events
     const handleOnline = () => setOnline(true);
     const handleOffline = () => setOnline(false);
-    
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    
+
     // Set initial state
     setOnline(navigator.onLine);
-    
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, [setOnline]);
-  
+
   const cartItemCount = items.reduce((sum, item) => sum + item.qty, 0);
-  
+
+  // Enter search mode: the whole header becomes a search bar and the product
+  // grid below filters live. Reset the category filter so search covers all.
+  const enterSearchMode = () => {
+    setSelectedCategory(null);
+    setSearchMode(true);
+  };
+
+  // Exit search mode: back to normal header, clear the query
+  const exitSearchMode = () => {
+    setSearchQuery('');
+    setSearchMode(false);
+  };
+
+  // Icon-only search button + category filter, placed next to logo & name
+  const headerLeftSlot = (
+    <>
+      <button
+        onClick={enterSearchMode}
+        className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl transition-all active:scale-95 ${
+          searchQuery
+            ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md shadow-primary-500/25'
+            : 'text-gray-600 hover:text-gray-900 hover:bg-white/60'
+        }`}
+        title={t(language, 'pos.search')}
+        aria-label={t(language, 'pos.search')}
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+      </button>
+
+      <CategoryFilter />
+    </>
+  );
+
   return (
     <div className="h-screen supports-[height:100dvh]:h-[100dvh] flex flex-col overflow-hidden bg-gradient-to-br from-slate-100 via-gray-50 to-stone-100 bg-pattern">
-      <Header showFullscreen />
-      
+      {/* Search mode replaces the whole header with a search bar */}
+      {searchMode ? (
+        <SearchBar onExit={exitSearchMode} />
+      ) : (
+        <Header showFullscreen leftSlot={headerLeftSlot} />
+      )}
+
       <div className="flex-1 flex overflow-hidden relative">
         {/* Products panel */}
         <div className={`flex-1 overflow-hidden transition-all duration-300 ${showCart ? 'hidden lg:block' : 'block'}`}>
           <ProductGrid />
         </div>
-        
+
         {/* Cart panel - Desktop: side panel, Mobile: full screen overlay */}
         <div className={`
-          fixed inset-0 top-[73px] lg:relative lg:inset-auto lg:top-0
+          fixed inset-0 top-[52px] lg:relative lg:inset-auto lg:top-0
           w-full lg:w-[420px] xl:w-[480px] 
           overflow-hidden
           transition-transform duration-300 ease-out
@@ -49,7 +100,7 @@ export function POSLayout() {
         `}>
           <Cart onClose={() => setShowCart(false)} showCloseButton={showCart} />
         </div>
-        
+
         {/* Mobile cart toggle button */}
         <button
           onClick={() => setShowCart(true)}

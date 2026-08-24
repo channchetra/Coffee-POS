@@ -24,6 +24,9 @@
   "pos": {
     "title": "Point of Sale",
     "search": "Search products...",
+    "clearSearch": "Clear search",
+    "noResults": "No products found",
+    "categories": "Categories",
     "allCategories": "All",
     "coffee": "Coffee",
     "wine": "Wine",
@@ -125,7 +128,11 @@
     "edit": "Edit",
     "close": "Close",
     "retry": "Retry",
-    "back": "Back"
+    "back": "Back",
+    "menu": "Menu",
+    "language": "Language",
+    "settings": "Settings",
+    "more": "More"
   },
   "currency": {
     "usd": "USD",

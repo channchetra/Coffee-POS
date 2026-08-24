@@ -1,11 +1,14 @@
-# Use official Bun image (Alpine-based, latest 1.x)
-FROM oven/bun:1-alpine AS base
+# Use official Bun image pinned to 1.4 (Alpine / musl).
+# NOTE: Bun 1.4's native image processing (Bun.file().image() -> resize/webp)
+# is statically bundled in the bun binary - verified working in this Alpine
+# container without any extra system packages (no libvips/apk needed).
+FROM oven/bun:1.4-alpine AS base
 
 # Install wget for healthcheck
 RUN apk add --no-cache wget
 
 # Install dependencies only when needed
-FROM base AS deps
+FROM oven/bun:1.4-alpine AS deps
 WORKDIR /app
 
 # Copy package files
@@ -15,7 +18,7 @@ COPY package.json bun.lock ./
 RUN bun install
 
 # Build stage
-FROM base AS builder
+FROM oven/bun:1.4-alpine AS builder
 WORKDIR /app
 
 # Copy dependencies
@@ -26,7 +29,7 @@ COPY . .
 RUN bun run build
 
 # Production stage
-FROM base AS runner
+FROM oven/bun:1.4-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
