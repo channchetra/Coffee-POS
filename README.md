@@ -204,13 +204,14 @@ Coffee POS/
 │   ├── pages/            # Astro pages & API routes
 │   │   ├── admin/        # Admin pages
 │   │   ├── api/          # API endpoints
-│   │   └── invoice/      # Invoice page
-│   └── styles/           # Global CSS, print styles
+│   │   ├── invoice/      # Invoice page
+│   │   └── sw.js.ts      # Serves /sw.js with no-store caching
+│   ├── styles/           # Global CSS, print styles
+│   └── sw.js             # Service worker source (served at /sw.js)
 ├── public/
 │   ├── icons/            # PWA icons
 │   ├── images/products/  # Product images
-│   ├── manifest.json     # PWA manifest
-│   └── sw.js             # Service worker
+│   └── manifest.json     # PWA manifest
 ├── scripts/              # Database setup & seeding
 ├── data/                 # SQLite database file
 └── package.json

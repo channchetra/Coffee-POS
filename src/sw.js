@@ -1,4 +1,9 @@
-const CACHE_NAME = 'coffee-pos-v4';
+// Coffee POS service worker
+// IMPORTANT: never served from a static cache — it is delivered through the
+// /sw.js SSR endpoint with `Cache-Control: no-store` so browsers always check
+// for updates after a deploy. Bump CACHE_NAME on every release that changes
+// cached content.
+const CACHE_NAME = 'coffee-pos-v5';
 const STATIC_ASSETS = [
   '/',
   '/login',

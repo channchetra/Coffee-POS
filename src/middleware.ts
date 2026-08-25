@@ -10,13 +10,35 @@ const publicRoutes = ['/', '/login', '/api/auth/login', '/api/auth/logout'];
 // API routes that require authentication
 const protectedApiRoutes = ['/api/products', '/api/categories', '/api/sync', '/api/settings', '/api/admin', '/api/upload'];
 
+/**
+ * Cache rules to prevent stale clients after a deploy:
+ * - HTML pages: revalidate every navigation (no-Cache), so the browser checks
+ *   the origin each time instead of heuristically caching old pages.
+ * - API responses: never store.
+ * Static hashed assets (_astro/*, uploads, images) keep their content-hashed
+ * names and are safe to cache long-term.
+ */
+function applyCacheControl(response: Response, pathname: string): Response {
+  try {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/html')) {
+      response.headers.set('Cache-Control', 'no-cache, max-age=0, must-revalidate');
+    } else if (pathname.startsWith('/api/')) {
+      response.headers.set('Cache-Control', 'no-store');
+    }
+  } catch {
+    // Immutable headers on some responses: best effort only
+  }
+  return response;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
   const { cookies, redirect } = context;
   
   // Allow public routes
   if (publicRoutes.some(route => pathname === route)) {
-    return next();
+    return applyCacheControl(await next(), pathname);
   }
   
   // Allow static assets
@@ -36,7 +58,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       pathname === '/manifest.json' ||
       pathname === '/sw.js' ||
       pathname === '/favicon.svg') {
-    return next();
+    return applyCacheControl(await next(), pathname);
   }
   
   // Check if route needs protection
@@ -112,5 +134,5 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
   
-  return next();
+  return applyCacheControl(await next(), pathname);
 });
