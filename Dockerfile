@@ -4,11 +4,11 @@
 # container without any extra system packages (no libvips/apk needed).
 FROM oven/bun:1.4-alpine AS base
 
-# Install wget for healthcheck
-RUN apk add --no-cache wget
+# Install wget for healthcheck + su-exec to drop privileges after entrypoint setup
+RUN apk add --no-cache wget su-exec
 
 # Install dependencies only when needed
-FROM oven/bun:1.4-alpine AS deps
+FROM base AS deps
 WORKDIR /app
 
 # Copy package files
@@ -18,7 +18,7 @@ COPY package.json bun.lock ./
 RUN bun install
 
 # Build stage
-FROM oven/bun:1.4-alpine AS builder
+FROM base AS builder
 WORKDIR /app
 
 # Copy dependencies
@@ -29,7 +29,7 @@ COPY . .
 RUN bun run build
 
 # Production stage
-FROM oven/bun:1.4-alpine AS runner
+FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -63,8 +63,12 @@ COPY --from=builder --chown=astro:nodejs /app/public ./public
 COPY --chown=astro:nodejs docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN sed -i 's/\r$//' /app/docker-entrypoint.sh && chmod +x /app/docker-entrypoint.sh
 
-# Switch to non-root user
-USER astro
+# NOTE: the container runs as root ONLY for the entrypoint, which:
+#   1. repairs ownership of mounted volumes (older deploys created them as
+#      root -> SQLITE_READONLY_DIRECTORY crashes in migrations -> restart loop)
+#   2. runs DB setup/migrations
+#   3. drops privileges with su-exec to the astro user for the app itself
+# No EXPOSE/healthcheck changes needed; the app still runs as USER astro.
 
 # Expose port
 EXPOSE 4321
