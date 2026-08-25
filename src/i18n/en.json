@@ -137,5 +137,9 @@
   "currency": {
     "usd": "USD",
     "khr": "KHR"
+  },
+  "update": {
+    "available": "A new version is available",
+    "button": "Update"
   }
 }

@@ -1,4 +1,6 @@
 ---
+import { UpdateBanner } from '../components/layout/UpdateBanner';
+
 interface Props {
   title: string;
 }
@@ -24,34 +26,10 @@ const { title } = Astro.props;
   </head>
   <body class="min-h-screen">
     <slot />
+    <!-- PWA update banner (registers the service worker + shows the
+         "Update available" prompt, incl. when the device comes back online) -->
+    <UpdateBanner client:load />
     <script>
-      // Register service worker for PWA
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          // Was this page already controlled by a previous SW? If yes, a later
-          // controllerchange means a NEW deploy took over -> reload once so the
-          // user immediately sees the new version.
-          const wasControlled = !!navigator.serviceWorker.controller;
-          let reloaded = false;
-
-          // updateViaCache: 'none' -> always revalidate sw.js over the network on
-          // update checks (server sends Cache-Control: no-store, so this also
-          // defeats proxies/CDNs that try to cache the old service worker).
-          navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
-            .then((reg) => {
-              navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (wasControlled && !reloaded) {
-                  reloaded = true;
-                  window.location.reload();
-                }
-              });
-              // Force an update check now, not only on the next navigation
-              reg.update().catch(() => {});
-            })
-            .catch(err => console.error('SW registration failed:', err));
-        });
-      }
-      
       // Online/offline detection
       function updateOnlineStatus() {
         document.body.classList.toggle('is-offline', !navigator.onLine);
