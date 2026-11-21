@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Header } from '../layout/Header';
 import { useAuthStore, useLanguageStore } from '../../lib/store';
+import type { AuthUser } from '../../lib/client/auth';
 import { t } from '../../i18n';
 
 interface AdminLayoutProps {
@@ -52,35 +53,51 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       window.location.href = '/login';
     };
 
-    const checkAuth = () => {
+    const checkAuth = async () => {
+      let storedUser: AuthUser | null = null;
       const stored = localStorage.getItem('auth-storage');
-      if (!stored) {
+
+      if (stored) {
+        try {
+          storedUser = JSON.parse(stored).state?.user ?? null;
+        } catch {
+          storedUser = null;
+        }
+      }
+
+      // The server session is the source of truth. localStorage only caches it
+      // for instant rendering, so recover the user after a deploy/new device.
+      if (!storedUser) {
+        try {
+          const response = await fetch('/api/auth/me', {
+            credentials: 'include',
+            cache: 'no-store',
+          });
+          if (response.ok) {
+            const data = await response.json();
+            storedUser = data.user ?? null;
+          }
+        } catch {
+          storedUser = null;
+        }
+      }
+
+      if (!storedUser) {
         redirectToLogin();
         return;
       }
 
-      try {
-        const data = JSON.parse(stored);
-        const storedUser = data.state?.user;
-        if (!storedUser) {
-          redirectToLogin();
-          return;
-        }
-
-        setUser(storedUser);
-        if (storedUser.role !== 'admin') {
-          window.location.href = '/pos';
-          return;
-        }
-
-        setIsAuthorized(true);
-        setIsChecking(false);
-      } catch {
-        redirectToLogin();
+      setUser(storedUser);
+      if (storedUser.role !== 'admin') {
+        window.location.href = '/pos';
+        return;
       }
+
+      setIsAuthorized(true);
+      setIsChecking(false);
     };
-    
-    checkAuth();
+
+    void checkAuth();
   }, [setUser]);
   
   const navItems = [ // desloppify:ignore HARDCODED_FAKE_DATA

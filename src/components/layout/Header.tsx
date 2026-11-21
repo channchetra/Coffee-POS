@@ -31,6 +31,34 @@ export function Header({ showLogout = true, showSync = true, showFullscreen = fa
     setMounted(true);
   }, []);
 
+  // A valid server session can outlive localStorage (deploy, new tab, cleared
+  // site data). Recover the user so the menu and admin link stay correct.
+  useEffect(() => {
+    if (!mounted || user) return;
+    let cancelled = false;
+
+    const loadSession = async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!cancelled && data.user) {
+          setUser(data.user);
+        }
+      } catch {
+        // Stay anonymous; the page-level auth guards handle redirects.
+      }
+    };
+
+    void loadSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [mounted, user, setUser]);
+
   // Track fullscreen state (with WebKit prefix for older Android WebViews)
   useEffect(() => {
     if (!mounted) return;

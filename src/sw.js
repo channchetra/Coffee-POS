@@ -3,7 +3,7 @@
 // /sw.js SSR endpoint with `Cache-Control: no-store` so browsers always check
 // for updates after a deploy. Bump CACHE_NAME on every release that changes
 // cached content.
-const CACHE_NAME = 'coffee-pos-v8';
+const CACHE_NAME = 'coffee-pos-v9';
 const STATIC_ASSETS = [
   '/',
   '/login',
@@ -85,8 +85,8 @@ async function handleNavigation(request, url) {
     // Network failure: use the cached shell below.
   }
 
-  if (response?.ok) {
-    await putInCache(request, response);
+  if (response && (response.ok || (response.status >= 300 && response.status < 400))) {
+    if (response.ok) await putInCache(request, response);
     return response;
   }
 
