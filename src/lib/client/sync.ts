@@ -21,6 +21,13 @@ function notifySyncListeners(syncing: boolean): void {
   syncListeners.forEach(l => l(syncing));
 }
 
+async function markOpFailed(op: OutboxOp, message: string): Promise<void> {
+  if (op.type === 'INVOICE_CREATE') {
+    await updateInvoiceSyncStatus(op.payload.invoice.id, 'error', message);
+  }
+  await updateOutboxOpAttempt(op.opId);
+}
+
 export async function syncToServer(): Promise<{ success: number; failed: number }> {
   if (isSyncing) {
     return { success: 0, failed: 0 };
@@ -91,25 +98,15 @@ export async function syncToServer(): Promise<{ success: number; failed: number 
         // Process errors
         for (const err of result.errors || []) {
           const op = batch.find(o => o.opId === err.opId);
-          if (op) {
-            if (op.type === 'INVOICE_CREATE') {
-              await updateInvoiceSyncStatus(op.payload.invoice.id, 'error', err.message);
-            }
-            await updateOutboxOpAttempt(err.opId);
-            failed++;
-          }
+          if (!op) continue;
+          await markOpFailed(op, err.message);
+          failed++;
         }
       } catch (error) {
         // Mark all ops in batch as failed
+        const message = error instanceof Error ? error.message : 'Unknown error';
         for (const op of batch) {
-          if (op.type === 'INVOICE_CREATE') {
-            await updateInvoiceSyncStatus(
-              op.payload.invoice.id, 
-              'error', 
-              error instanceof Error ? error.message : 'Unknown error'
-            );
-          }
-          await updateOutboxOpAttempt(op.opId);
+          await markOpFailed(op, message);
           failed++;
         }
       }

@@ -115,6 +115,27 @@ docker cp coffee-pos:/app/data/coffee-pos.db ./backup/
 docker cp coffee-pos:/app/dist/client/uploads ./backup/
 ```
 
+### Option 3: Kiri Dev Environment
+
+For a containerized dev/test loop on [Kiri](https://docs.runkiri.com/quick-start/). The production `docker-compose.yml` is left untouched and remains the CI/CD deployment file.
+
+```bash
+# Install dependencies, dev tools, and start the Astro dev server
+bun run dev:kiri:setup
+
+# App:      http://localhost:4322
+# Logs:     bun run dev:kiri:logs
+# Stop:     bun run dev:kiri:down
+
+# Quality scan (desloppify in the dev container)
+bun run quality:desloppify
+
+# Typecheck + production build (test container)
+bun run test:kiri
+```
+
+The dev stack bind-mounts the repo, persists SQLite and uploads on the host, and uses the same seeded admin/cashier accounts. See `docker-compose.dev.yml` and `scripts/dev-entrypoint.sh`.
+
 ## Default Credentials
 
 | Role    | Username | Password    |

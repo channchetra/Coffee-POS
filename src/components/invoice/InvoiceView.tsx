@@ -45,47 +45,56 @@ export function InvoiceView({ invoiceId }: InvoiceViewProps) {
             response = await fetch(`/api/admin/invoices?id=${invoiceId}`);
           }
           
-          if (response.ok) {
-            const serverData = await response.json();
-            if (serverData && serverData.invoice) {
-              // Map server data to local format
-              const serverInvoice: LocalInvoice = {
-                id: serverData.invoice.id,
-                invoiceNo: serverData.invoice.invoiceNo,
-                cashierId: serverData.invoice.cashierId,
-                cashierName: serverData.invoice.cashierName || 'Unknown',
-                deviceId: serverData.invoice.deviceId || 'server',
-                subtotalUSDcents: serverData.invoice.subtotalUSDcents,
-                totalUSDcents: serverData.invoice.totalUSDcents,
-                paidUSDcents: serverData.invoice.paidUSDcents,
-                changeUSDcents: serverData.invoice.changeUSDcents,
-                exchangeRateKHR: serverData.invoice.exchangeRateKHR,
-                subtotalKHR: serverData.invoice.subtotalKHR,
-                totalKHR: serverData.invoice.totalKHR,
-                paidKHR: serverData.invoice.paidKHR,
-                changeKHR: serverData.invoice.changeKHR,
-                paymentMethod: serverData.invoice.paymentMethod || 'cash',
-                createdAt: serverData.invoice.createdAt,
-                syncStatus: 'synced',
-              };
-              
-              const serverItems: LocalInvoiceItem[] = (serverData.items || []).map((item: any) => ({
-                id: item.id,
-                invoiceId: item.invoiceId,
-                productId: item.productId,
-                nameSnapshot: item.nameSnapshot,
-                priceUSDcentsSnapshot: item.priceUSDcentsSnapshot,
-                qty: item.qty,
-                lineTotalUSDcents: item.lineTotalUSDcents,
-                lineTotalKHR: item.lineTotalKHR,
-              }));
-              
-              setInvoice(serverInvoice);
-              setItems(serverItems);
-              setLoading(false);
-              return;
-            }
+          if (!response.ok) {
+            setLoading(false);
+            return;
           }
+
+          const serverData = await response.json();
+          if (!serverData?.invoice) {
+            setLoading(false);
+            return;
+          }
+          if (!Array.isArray(serverData.items)) {
+            throw new Error('Invoice response is missing items');
+          }
+
+          // Map server data to local format
+          const serverInvoice: LocalInvoice = {
+            id: serverData.invoice.id,
+            invoiceNo: serverData.invoice.invoiceNo,
+            cashierId: serverData.invoice.cashierId,
+            cashierName: serverData.invoice.cashierName || 'Unknown',
+            deviceId: serverData.invoice.deviceId || 'server',
+            subtotalUSDcents: serverData.invoice.subtotalUSDcents,
+            totalUSDcents: serverData.invoice.totalUSDcents,
+            paidUSDcents: serverData.invoice.paidUSDcents,
+            changeUSDcents: serverData.invoice.changeUSDcents,
+            exchangeRateKHR: serverData.invoice.exchangeRateKHR,
+            subtotalKHR: serverData.invoice.subtotalKHR,
+            totalKHR: serverData.invoice.totalKHR,
+            paidKHR: serverData.invoice.paidKHR,
+            changeKHR: serverData.invoice.changeKHR,
+            paymentMethod: serverData.invoice.paymentMethod || 'cash',
+            createdAt: serverData.invoice.createdAt,
+            syncStatus: 'synced',
+          };
+
+          const serverItems: LocalInvoiceItem[] = serverData.items.map((item: any) => ({
+            id: item.id,
+            invoiceId: item.invoiceId,
+            productId: item.productId,
+            nameSnapshot: item.nameSnapshot,
+            priceUSDcentsSnapshot: item.priceUSDcentsSnapshot,
+            qty: item.qty,
+            lineTotalUSDcents: item.lineTotalUSDcents,
+            lineTotalKHR: item.lineTotalKHR,
+          }));
+
+          setInvoice(serverInvoice);
+          setItems(serverItems);
+          setLoading(false);
+          return;
         } catch (error) {
           console.error('Error fetching invoice from server:', error);
         }
@@ -166,9 +175,7 @@ export function InvoiceView({ invoiceId }: InvoiceViewProps) {
         </div>
       </div>
       
-      {/* Invoice content */}
       <div className={`print-area ${printMode === 'receipt' ? 'print-receipt' : 'print-a4'} max-w-2xl mx-auto bg-white rounded-xl shadow-sm p-6`}>
-        {/* Header */}
         <div className="invoice-header text-center mb-6">
           <h1 className="invoice-title text-2xl font-bold text-gray-900">{t(language, 'app.name')}</h1>
           <p className="text-5xl font-black tracking-tight text-gray-900 leading-none my-1">#{dailySequence}</p>
@@ -284,7 +291,6 @@ export function InvoiceView({ invoiceId }: InvoiceViewProps) {
           )}
         </div>
         
-        {/* Footer */}
         <div className="footer text-center mt-8 pt-4 border-t border-gray-200">
           <p className="text-gray-600">{t(language, 'invoice.thankYou')}</p>
           <p className="text-sm text-gray-400 mt-2">Terminal: {invoice.deviceId.slice(0, 8)}</p>

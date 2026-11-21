@@ -88,6 +88,7 @@ export function PaymentModal({ isOpen, onClose, totalUSDcents }: PaymentModalPro
         totalKHR,
         paidKHR,
         changeKHR,
+        paymentMethod: 'cash',
         createdAt: now,
         syncStatus: 'pending',
       };

@@ -1,5 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
-import { getSessionByToken } from './lib/db/server';
+import { getSessionByToken } from './lib/db';
 
 // Routes that require authentication
 const protectedRoutes = ['/pos', '/admin', '/invoice'];

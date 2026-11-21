@@ -36,6 +36,17 @@ export function UpdateBanner() {
       reg?.update().catch(() => {});
     };
 
+    const watchInstallingWorker = (registration: ServiceWorkerRegistration) => {
+      const onStateChange = (worker: ServiceWorker) => () => {
+        if (worker.state === 'activated') showIfControlled();
+      };
+      registration.addEventListener('updatefound', () => {
+        const worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener('statechange', onStateChange(worker));
+      });
+    };
+
     // Our SW posts VERSION_UPDATED to all clients once a new version takes over
     const onMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'VERSION_UPDATED') {
@@ -48,15 +59,7 @@ export function UpdateBanner() {
       .register('/sw.js', { updateViaCache: 'none' })
       .then((r) => {
         reg = r;
-        r.addEventListener('updatefound', () => {
-          const worker = r.installing;
-          if (!worker) return;
-          worker.addEventListener('statechange', () => {
-            if (worker.state === 'activated') {
-              showIfControlled();
-            }
-          });
-        });
+        watchInstallingWorker(r);
         // Force an update check right away
         checkForUpdates();
       })

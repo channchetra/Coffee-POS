@@ -7,7 +7,7 @@ import {
   deleteProduct,
   getSessionByToken,
   getSetting
-} from '../../../lib/db/server';
+} from '../../../lib/db';
 
 // Middleware to check admin
 async function requireAdmin(cookies: any): Promise<{ error?: Response; session?: any }> {

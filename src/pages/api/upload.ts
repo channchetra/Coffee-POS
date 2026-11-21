@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { getSessionByToken } from "../../lib/db/server";
+import { getSessionByToken } from "../../lib/db";
 import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import { join } from "path";
@@ -218,7 +218,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Write file
     await writeFile(filepath, buffer);
 
-    // Return the public URL
     const imageUrl = `/uploads/${filename}`;
 
     return new Response(

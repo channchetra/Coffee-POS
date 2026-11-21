@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getSessionByToken } from '../../../lib/db/server';
+import { getSessionByToken } from '../../../lib/db';
 
 export const GET: APIRoute = async ({ cookies }) => {
   try {

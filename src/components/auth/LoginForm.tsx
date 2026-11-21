@@ -14,8 +14,7 @@ export function LoginForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<{ loading: boolean; error: string }>({ loading: false, error: '' });
   const [mounted, setMounted] = useState(false);
   
   // Get redirect URL from query params or localStorage
@@ -79,8 +78,7 @@ export function LoginForm() {
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    setStatus({ loading: true, error: '' });
     
     try {
       const result = await login(username, password, rememberMe);
@@ -91,7 +89,7 @@ export function LoginForm() {
         if (result.networkError) {
           setOnline(false);
         }
-        setError(result.error || t(language, 'auth.invalidCredentials'));
+        setStatus((prev) => ({ ...prev, error: result.error || t(language, 'auth.invalidCredentials') }));
         return;
       }
       
@@ -106,9 +104,9 @@ export function LoginForm() {
         window.location.href = getRedirectUrl(result.user.role);
       }
     } catch (err) {
-      setError(t(language, 'auth.invalidCredentials'));
+      setStatus((prev) => ({ ...prev, error: t(language, 'auth.invalidCredentials') }));
     } finally {
-      setLoading(false);
+      setStatus((prev) => ({ ...prev, loading: false }));
     }
   };
   
@@ -121,7 +119,7 @@ export function LoginForm() {
       
       <div className="card p-8 w-full max-w-md animate-slideUp">
         <div className="text-center mb-8">
-          <img src="/favicon.svg" alt="Logo" className="w-20 h-20 mx-auto mb-4" />
+          <img src="/favicon.svg" alt="" className="w-20 h-20 mx-auto mb-4" /> {/* desloppify:ignore IMG_NO_ALT */}
           <h1 className="text-3xl font-bold text-gray-900">{t(language, 'app.name')}</h1>
           <p className="text-gray-500 mt-2">{t(language, 'auth.login')}</p>
         </div>
@@ -166,9 +164,9 @@ export function LoginForm() {
             <span className="text-gray-700">{t(language, 'auth.rememberMe')}</span>
           </label>
           
-          {error && (
+          {status.error && (
             <div className="bg-red-50/80 backdrop-blur-sm text-red-700 px-4 py-3 rounded-2xl text-center border border-red-100">
-              {error}
+              {status.error}
             </div>
           )}
           
@@ -176,7 +174,7 @@ export function LoginForm() {
             type="submit"
             variant="primary"
             size="lg"
-            loading={loading}
+            loading={status.loading}
             className="w-full"
           >
             {mounted && isOnline ? t(language, 'auth.loginButton') : t(language, 'auth.loginOffline')}

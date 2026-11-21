@@ -1,0 +1,7 @@
+{
+  "name": "coffee-pos-dev-tools",
+  "private": true,
+  "dependencies": {
+    "desloppify": "1.0.2"
+  }
+}

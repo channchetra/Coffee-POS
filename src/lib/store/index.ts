@@ -65,7 +65,9 @@ interface CartState {
   getSubtotal: () => number;
 }
 
-export const useCartStore = create<CartState>((set, get) => ({
+export const useCartStore = create<CartState>()(
+  persist(
+    (set, get) => ({
   items: [],
   addItem: (product) => {
     set((state) => {
@@ -113,7 +115,14 @@ export const useCartStore = create<CartState>((set, get) => ({
   getSubtotal: () => {
     return get().items.reduce((sum, item) => sum + item.priceUSDcents * item.qty, 0);
   },
-}));
+    }),
+    {
+      name: 'cart-storage',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ items: state.items }),
+    }
+  )
+);
 
 // Products Store
 interface ProductsState {

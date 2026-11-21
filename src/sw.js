@@ -3,7 +3,7 @@
 // /sw.js SSR endpoint with `Cache-Control: no-store` so browsers always check
 // for updates after a deploy. Bump CACHE_NAME on every release that changes
 // cached content.
-const CACHE_NAME = 'coffee-pos-v6';
+const CACHE_NAME = 'coffee-pos-v8';
 const STATIC_ASSETS = [
   '/',
   '/login',
@@ -62,114 +62,125 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - serve from cache, fallback to network
+// --- Fetch strategies ------------------------------------------------------
+
+async function putInCache(request, response) {
+  if (!response.ok) return;
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(request, response.clone());
+  } catch {
+    // Caching is best effort; never fail the response because of it.
+  }
+}
+
+// Navigation: network first, cached page fallback. A deploy or reverse proxy
+// can answer 502/503 while the new version boots, so non-OK responses also
+// fall back to the cached shell instead of showing the proxy error page.
+async function handleNavigation(request, url) {
+  let response = null;
+  try {
+    response = await fetch(request);
+  } catch {
+    // Network failure: use the cached shell below.
+  }
+
+  if (response?.ok) {
+    await putInCache(request, response);
+    return response;
+  }
+
+  const cached = await caches.match(request);
+  if (cached) return cached;
+
+  // Offline invoice links fall back to the POS; invoices are viewed inline.
+  const fallback = url.pathname.startsWith('/invoice/')
+    ? await caches.match('/pos')
+    : await caches.match('/');
+  return fallback || response || Response.error();
+}
+
+// Static assets: cache first, refresh in the background.
+async function handleStaticAsset(request) {
+  const cached = await caches.match(request);
+  if (cached) {
+    fetch(request)
+      .then((response) => putInCache(request, response))
+      .catch(() => {});
+    return cached;
+  }
+
+  const response = await fetch(request);
+  await putInCache(request, response);
+  return response;
+}
+
+// Product catalogue: network first, cache fallback.
+async function handleProductCatalogue(request) {
+  try {
+    const response = await fetch(request);
+    if (!response.ok) throw new Error('Product catalogue request failed');
+    await putInCache(request, response);
+    return response;
+  } catch {
+    return (await caches.match(request)) || Response.error();
+  }
+}
+
+// Everything else: network first, cache fallback.
+async function handleNetworkFirst(request) {
+  const response = await fetch(request).catch(() => null);
+  if (response?.ok) return response;
+  return (await caches.match(request)) || response || Response.error();
+}
+
+function isStaticAsset(pathname) {
+  return (
+    pathname.startsWith('/images/') ||
+    pathname.startsWith('/icons/') ||
+    pathname.endsWith('.css') ||
+    pathname.endsWith('.js') ||
+    pathname.endsWith('.svg') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.jpg') ||
+    pathname.endsWith('.webp') ||
+    pathname.endsWith('.avif')
+  );
+}
+
+// Fetch event - pick a strategy for the request.
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
-  
-  // Skip non-GET requests
+
   if (request.method !== 'GET') {
     return;
   }
-  
-  // Skip API requests (except products for caching)
-  if (url.pathname.startsWith('/api/') && !url.pathname.includes('/products')) {
+
+  const isProductCatalogue = url.pathname === '/api/products';
+
+  // Skip all API requests except the product catalogue, which is cached
+  // offline. Admin product responses must never be cached on a shared tablet.
+  if (url.pathname.startsWith('/api/') && !isProductCatalogue) {
     return;
   }
-  
-  // Handle navigation requests (HTML pages)
+
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Cache successful responses
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(() => {
-          // Return cached page or appropriate fallback
-          return caches.match(request)
-            .then((cached) => {
-              if (cached) return cached;
-              
-              // Fallback for invoice pages - redirect to POS (invoices are viewed inline when offline)
-              if (url.pathname.startsWith('/invoice/')) {
-                return caches.match('/pos');
-              }
-              
-              // Default fallback to home
-              return caches.match('/');
-            });
-        })
-    );
+    event.respondWith(handleNavigation(request, url));
     return;
   }
-  
-  // Handle static assets and images
-  if (
-    url.pathname.startsWith('/images/') ||
-    url.pathname.startsWith('/icons/') ||
-    url.pathname.endsWith('.css') ||
-    url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.svg') ||
-    url.pathname.endsWith('.png') ||
-    url.pathname.endsWith('.jpg') ||
-    url.pathname.endsWith('.webp') ||
-    url.pathname.endsWith('.avif')
-  ) {
-    event.respondWith(
-      caches.match(request)
-        .then((cached) => {
-          if (cached) {
-            // Return cached, but also fetch and update cache in background
-            fetch(request)
-              .then((response) => {
-                if (response.ok) {
-                  caches.open(CACHE_NAME).then((cache) => cache.put(request, response));
-                }
-              })
-              .catch(() => {});
-            return cached;
-          }
-          
-          // Not cached - fetch and cache
-          return fetch(request)
-            .then((response) => {
-              if (response.ok) {
-                const clone = response.clone();
-                caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-              }
-              return response;
-            });
-        })
-    );
+
+  if (isStaticAsset(url.pathname)) {
+    event.respondWith(handleStaticAsset(request));
     return;
   }
-  
-  // Handle API products request - cache for offline
-  if (url.pathname === '/api/products') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
+
+  if (isProductCatalogue) {
+    event.respondWith(handleProductCatalogue(request));
     return;
   }
-  
-  // Default: network first, fallback to cache
-  event.respondWith(
-    fetch(request)
-      .catch(() => caches.match(request))
-  );
+
+  event.respondWith(handleNetworkFirst(request));
 });
 
 // Handle messages from client

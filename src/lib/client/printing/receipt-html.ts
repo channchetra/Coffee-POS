@@ -1,0 +1,204 @@
+import { formatDateTime } from '../../utils/format';
+import { formatKHR } from '../../utils/currency';
+import type { PrintableInvoice, PrintableInvoiceItem, ReceiptPrintOptions } from './types';
+
+export function getDailySequenceFromInvoiceNo(invoiceNo: string): number {
+  const parts = invoiceNo.split('-');
+  const raw = parts[parts.length - 1] || '';
+  const value = parseInt(raw, 10);
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export function buildReceiptHtml(
+  invoice: PrintableInvoice,
+  items: PrintableInvoiceItem[],
+  options?: ReceiptPrintOptions
+): string {
+  const sequence = getDailySequenceFromInvoiceNo(invoice.invoiceNo);
+  const paperSize = options?.paperSize === '80mm' ? '80mm' : '58mm';
+  const style = options?.style || 'normal';
+  const paperWidthMm = paperSize === '80mm' ? 80 : 58;
+  const receiptWidthPercent = paperSize === '80mm' ? '95%' : '92%';
+
+  const stylePreset = {
+    compact: {
+      pagePaddingMm: paperSize === '80mm' ? 1.4 : 1.0,
+      titleSizePx: 13,
+      sequenceSizePx: paperSize === '80mm' ? 34 : 32,
+      itemNameSizePx: paperSize === '80mm' ? 17 : 20,
+      metaSizePx: paperSize === '80mm' ? 10 : 13,
+      sectionLabelSizePx: paperSize === '80mm' ? 9 : 12,
+      itemGapMm: paperSize === '80mm' ? 1 : 1.1,
+      footerGapMm: 2,
+    },
+    normal: {
+      pagePaddingMm: paperSize === '80mm' ? 1.8 : 1.2,
+      titleSizePx: 14,
+      sequenceSizePx: paperSize === '80mm' ? 38 : 34,
+      itemNameSizePx: paperSize === '80mm' ? 20 : 23,
+      metaSizePx: paperSize === '80mm' ? 11 : 14,
+      sectionLabelSizePx: paperSize === '80mm' ? 10 : 13,
+      itemGapMm: paperSize === '80mm' ? 1.2 : 1.3,
+      footerGapMm: 2.5,
+    },
+    large: {
+      pagePaddingMm: paperSize === '80mm' ? 2.2 : 1.5,
+      titleSizePx: 16,
+      sequenceSizePx: paperSize === '80mm' ? 42 : 36,
+      itemNameSizePx: paperSize === '80mm' ? 22 : 26,
+      metaSizePx: paperSize === '80mm' ? 12 : 16,
+      sectionLabelSizePx: paperSize === '80mm' ? 11 : 14,
+      itemGapMm: paperSize === '80mm' ? 1.4 : 1.5,
+      footerGapMm: 3,
+    },
+  }[style];
+
+  const { pagePaddingMm, titleSizePx, sequenceSizePx, itemNameSizePx, metaSizePx, sectionLabelSizePx, itemGapMm, footerGapMm } = stylePreset;
+  const itemRows = items.map((item) => {
+    const names = item.nameSnapshot.split(' / ');
+    const englishName = escapeHtml((names[0] || item.nameSnapshot).trim());
+    const amount = escapeHtml(formatKHR(item.lineTotalKHR));
+    return `
+      <div class="item-row">
+        <div class="item-name">${englishName}</div>
+        <div class="item-meta">
+          <span class="item-qty">QTY ${item.qty}</span>
+          <span class="item-amount">${amount}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  @page { size: ${paperWidthMm}mm auto; margin: 0mm; }
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    font-weight: 700;
+    color: #000;
+  }
+  .receipt {
+    width: ${receiptWidthPercent};
+    box-sizing: border-box;
+    margin: 0 auto;
+    padding: 1.5mm ${pagePaddingMm}mm;
+    font-weight: 700;
+  }
+  .center { text-align: center; }
+  .title {
+    font-size: ${titleSizePx}px;
+    font-weight: 900;
+    margin-bottom: 1mm;
+  }
+  .sequence {
+    font-size: ${sequenceSizePx}px;
+    font-weight: 900;
+    margin: 0.5mm 0 1mm;
+  }
+  .invoice-no,
+  .meta,
+  .footer,
+  .section-label,
+  .totals,
+  .item-meta {
+    font-size: ${metaSizePx}px;
+    font-weight: 700;
+  }
+  .divider {
+    border-top: 1px solid #000;
+    margin: ${footerGapMm}mm 0;
+  }
+  .section-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1mm;
+    font-size: ${sectionLabelSizePx}px;
+  }
+  .item-row {
+    padding: ${itemGapMm}mm 0;
+  }
+  .item-name {
+    font-size: ${itemNameSizePx}px;
+    line-height: 1.1;
+    font-weight: 900;
+    margin-bottom: 0.6mm;
+  }
+  .item-meta,
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .item-qty,
+  .item-amount,
+  .total-label,
+  .total-value {
+    font-weight: 800;
+  }
+  .item-qty {
+    font-size: ${metaSizePx}px;
+  }
+  .item-amount {
+    font-size: ${metaSizePx}px;
+  }
+  .total-row {
+    margin: 1mm 0;
+    font-size: ${metaSizePx}px;
+  }
+  .grand-total {
+    font-size: ${style === 'large' ? 15 : 13}px;
+    font-weight: 900;
+  }
+  .footer {
+    text-align: center;
+    margin-top: ${footerGapMm}mm;
+    font-size: ${metaSizePx}px;
+    font-weight: 900;
+  }
+</style>
+</head>
+<body>
+  <div class="receipt">
+    <div class="center title">RECEIPT</div>
+    <div class="center sequence">#${sequence}</div>
+    <div class="center invoice-no">${escapeHtml(invoice.invoiceNo)}</div>
+    <div class="center meta">${escapeHtml(formatDateTime(invoice.createdAt, 'en-US'))}</div>
+    <div class="center meta">Cashier: ${escapeHtml(invoice.cashierName)}</div>
+
+    <div class="divider"></div>
+
+    <div class="section-label">
+      <span>ITEM</span>
+      <span>QTY / AMT</span>
+    </div>
+
+    ${itemRows}
+
+    <div class="divider"></div>
+
+    <div class="totals">
+      <div class="total-row"><span class="total-label">TOTAL</span><span class="total-value">${escapeHtml(formatKHR(invoice.totalKHR))}</span></div>
+      <div class="total-row"><span class="total-label">PAID</span><span class="total-value">${escapeHtml(formatKHR(invoice.paidKHR))}</span></div>
+      <div class="total-row grand-total"><span class="total-label">CHANGE</span><span class="total-value">${invoice.paymentMethod === 'bank' ? 'No Change' : escapeHtml(formatKHR(invoice.changeKHR))}</span></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="footer">THANK YOU</div>
+  </div>
+</body>
+</html>`;
+}

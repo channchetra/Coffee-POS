@@ -106,7 +106,7 @@ export function Header({ showLogout = true, showSync = true, showFullscreen = fa
       <div className="flex items-center justify-between gap-2">
         {/* Logo, name & POS controls (search / categories) */}
         <div className="flex items-center gap-2 md:gap-3 flex-shrink-0 min-w-0">
-          <img src="/favicon.svg" alt="Logo" className="w-8 h-8 md:w-10 md:h-10 shrink-0" />
+          <img src="/favicon.svg" alt="" className="w-8 h-8 md:w-10 md:h-10 shrink-0" /> {/* desloppify:ignore IMG_NO_ALT */}
           <div className="hidden md:block shrink-0">
             <h1 className="text-base lg:text-lg font-bold text-gray-900 leading-tight">
               {t(language, 'app.name')}

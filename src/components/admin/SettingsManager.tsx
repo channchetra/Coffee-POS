@@ -2,23 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
 import { useLanguageStore } from '../../lib/store';
 import { formatExchangeRate } from '../../lib/utils/currency';
-import { getEscPosEnvironmentStatus, printEscPosTestReceipt } from '../../lib/client/printing';
+import { PrinterSettingsSection } from './PrinterSettingsSection';
 import { t } from '../../i18n';
 
 export function SettingsManager() {
   const { language } = useLanguageStore();
-  const [exchangeRate, setExchangeRate] = useState('4000');
-  const [autoPrintInvoice, setAutoPrintInvoice] = useState(false);
-  const [receiptPrintMode, setReceiptPrintMode] = useState<'browser' | 'escpos-intent'>('browser');
-  const [receiptPaperSize, setReceiptPaperSize] = useState<'58mm' | '80mm'>('58mm');
-  const [receiptCopies, setReceiptCopies] = useState<1 | 2>(1);
-  const [receiptStyle, setReceiptStyle] = useState<'compact' | 'normal' | 'large'>('normal');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState('');
-  const [printerStatus, setPrinterStatus] = useState('');
-  const [testingPrint, setTestingPrint] = useState(false);
+  const [form, setForm] = useState({
+    exchangeRate: '4000',
+    autoPrintInvoice: false,
+    receiptPrintMode: 'browser' as 'browser' | 'escpos-intent',
+    receiptPaperSize: '58mm' as '58mm' | '80mm',
+    receiptCopies: 1 as 1 | 2,
+    receiptStyle: 'normal' as 'compact' | 'normal' | 'large',
+  });
+  const [status, setStatus] = useState({ loading: true, saving: false, success: false, error: '' });
   
   useEffect(() => {
     const fetchSettings = async () => {
@@ -26,16 +23,18 @@ export function SettingsManager() {
         const response = await fetch('/api/settings');
         if (!response.ok) throw new Error('Failed to fetch settings');
         const data = await response.json();
-        setExchangeRate(data.defaultExchangeRateKHR?.toString() || '4000');
-        setAutoPrintInvoice(data.autoPrintInvoice || false);
-        setReceiptPrintMode(data.receiptPrintMode === 'escpos-intent' ? 'escpos-intent' : 'browser');
-        setReceiptPaperSize(data.receiptPaperSize === '80mm' ? '80mm' : '58mm');
-        setReceiptCopies(data.receiptCopies === 2 ? 2 : 1);
-        setReceiptStyle(['compact', 'normal', 'large'].includes(data.receiptStyle) ? data.receiptStyle : 'normal');
+        setForm({
+          exchangeRate: data.defaultExchangeRateKHR?.toString() || '4000',
+          autoPrintInvoice: data.autoPrintInvoice || false,
+          receiptPrintMode: data.receiptPrintMode === 'escpos-intent' ? 'escpos-intent' : 'browser',
+          receiptPaperSize: data.receiptPaperSize === '80mm' ? '80mm' : '58mm',
+          receiptCopies: data.receiptCopies === 2 ? 2 : 1,
+          receiptStyle: ['compact', 'normal', 'large'].includes(data.receiptStyle) ? data.receiptStyle : 'normal',
+        });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error loading settings');
+        setStatus((prev) => ({ ...prev, error: err instanceof Error ? err.message : 'Error loading settings' }));
       } finally {
-        setLoading(false);
+        setStatus((prev) => ({ ...prev, loading: false }));
       }
     };
     
@@ -43,12 +42,10 @@ export function SettingsManager() {
   }, []);
   
   const handleSave = async () => {
-    setSaving(true);
-    setError('');
-    setSuccess(false);
+    setStatus((prev) => ({ ...prev, saving: true, error: '', success: false }));
     
     try {
-      const rate = parseInt(exchangeRate, 10);
+      const rate = parseInt(form.exchangeRate, 10);
       if (isNaN(rate) || rate <= 0) {
         throw new Error('Invalid exchange rate');
       }
@@ -58,64 +55,26 @@ export function SettingsManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           defaultExchangeRateKHR: rate,
-          autoPrintInvoice: autoPrintInvoice,
-          receiptPrintMode,
-          receiptPaperSize,
-          receiptCopies,
-          receiptStyle
+          autoPrintInvoice: form.autoPrintInvoice,
+          receiptPrintMode: form.receiptPrintMode,
+          receiptPaperSize: form.receiptPaperSize,
+          receiptCopies: form.receiptCopies,
+          receiptStyle: form.receiptStyle
         })
       });
       
       if (!response.ok) throw new Error('Failed to save settings');
       
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      setStatus((prev) => ({ ...prev, success: true }));
+      setTimeout(() => setStatus((prev) => ({ ...prev, success: false })), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error saving settings');
+      setStatus((prev) => ({ ...prev, error: err instanceof Error ? err.message : 'Error saving settings' }));
     } finally {
-      setSaving(false);
+      setStatus((prev) => ({ ...prev, saving: false }));
     }
   };
 
-  const handleCheckPrinter = () => {
-    const status = getEscPosEnvironmentStatus();
-    const summary = [
-      `Android: ${status.isAndroid ? 'Yes' : 'No'}`,
-      `Compression: ${status.hasCompressionLibrary ? 'OK' : 'Missing'}`,
-      status.recommendation
-    ].join(' | ');
-    setPrinterStatus(summary);
-  };
-
-  const handlePrintTestReceipt = async () => {
-    setTestingPrint(true);
-    setError('');
-    setSuccess(false);
-
-    try {
-      const result = await printEscPosTestReceipt({
-        paperSize: receiptPaperSize,
-        copies: receiptCopies,
-        style: receiptStyle
-      });
-
-      if (!result.success) {
-        throw new Error(result.error || 'Test print failed');
-      }
-
-      setPrinterStatus(
-        language === 'km'
-          ? 'បានបើកបង្កាន់ដៃតេស្តទៅ open-escpos-print-service។'
-          : 'Test receipt sent to open-escpos-print-service.'
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Test print failed');
-    } finally {
-      setTestingPrint(false);
-    }
-  };
-
-  if (loading) {
+  if (status.loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-spin w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full"></div>
@@ -144,8 +103,8 @@ export function SettingsManager() {
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">1 USD =</span>
             <input
               type="number"
-              value={exchangeRate}
-              onChange={(e) => setExchangeRate(e.target.value)}
+              value={form.exchangeRate}
+              onChange={(e) => setForm((prev) => ({ ...prev, exchangeRate: e.target.value }))}
               aria-label={language === 'km' ? 'អត្រាប្តូរប្រាក់លំនាំដើម' : 'Default exchange rate'}
               className="input input-lg pl-24 pr-16 text-right text-xl font-bold"
               min="1"
@@ -154,7 +113,7 @@ export function SettingsManager() {
           </div>
           
           <p className="text-center text-gray-600">
-            {formatExchangeRate(parseInt(exchangeRate, 10) || 0)}
+            {formatExchangeRate(parseInt(form.exchangeRate, 10) || 0)}
           </p>
         </div>
       </div>
@@ -171,8 +130,8 @@ export function SettingsManager() {
               {language === 'km' ? 'វិធីបោះពុម្ពបង្កាន់ដៃ' : 'Receipt Print Method'}
             </label>
             <select
-              value={receiptPrintMode}
-              onChange={(e) => setReceiptPrintMode(e.target.value as 'browser' | 'escpos-intent')}
+              value={form.receiptPrintMode}
+              onChange={(e) => setForm((prev) => ({ ...prev, receiptPrintMode: e.target.value as 'browser' | 'escpos-intent' }))}
               aria-label={language === 'km' ? 'វិធីបោះពុម្ពបង្កាន់ដៃ' : 'Receipt print method'}
               className="input"
             >
@@ -180,7 +139,7 @@ export function SettingsManager() {
               <option value="escpos-intent">{language === 'km' ? 'ESC/POS Intent (Android)' : 'ESC/POS Intent (Android)'}</option>
             </select>
             <p className="text-sm text-gray-500 mt-2">
-              {receiptPrintMode === 'escpos-intent'
+              {form.receiptPrintMode === 'escpos-intent'
                 ? (language === 'km'
                     ? 'ESC/POS Intent ត្រូវការកម្មវិធី open-escpos-print-service នៅលើ Android។'
                     : 'ESC/POS Intent requires open-escpos-print-service installed on Android.')
@@ -195,8 +154,8 @@ export function SettingsManager() {
               {language === 'km' ? 'ទំហំក្រដាសបោះពុម្ព' : 'Receipt Paper Size'}
             </label>
             <select
-              value={receiptPaperSize}
-              onChange={(e) => setReceiptPaperSize(e.target.value as '58mm' | '80mm')}
+              value={form.receiptPaperSize}
+              onChange={(e) => setForm((prev) => ({ ...prev, receiptPaperSize: e.target.value as '58mm' | '80mm' }))}
               aria-label={language === 'km' ? 'ទំហំក្រដាសបោះពុម្ព' : 'Receipt paper size'}
               className="input"
             >
@@ -215,8 +174,8 @@ export function SettingsManager() {
               {language === 'km' ? 'ចំនួនបោះពុម្ព' : 'Print Copies'}
             </label>
             <select
-              value={receiptCopies}
-              onChange={(e) => setReceiptCopies(Number(e.target.value) as 1 | 2)}
+              value={form.receiptCopies}
+              onChange={(e) => setForm((prev) => ({ ...prev, receiptCopies: Number(e.target.value) as 1 | 2 }))}
               aria-label={language === 'km' ? 'ចំនួនបោះពុម្ព' : 'Print copies'}
               className="input"
             >
@@ -230,8 +189,8 @@ export function SettingsManager() {
               {language === 'km' ? 'រចនាប័ទ្មវិក្កយបត្រ' : 'Receipt Style'}
             </label>
             <select
-              value={receiptStyle}
-              onChange={(e) => setReceiptStyle(e.target.value as 'compact' | 'normal' | 'large')}
+              value={form.receiptStyle}
+              onChange={(e) => setForm((prev) => ({ ...prev, receiptStyle: e.target.value as 'compact' | 'normal' | 'large' }))}
               aria-label={language === 'km' ? 'រចនាប័ទ្មវិក្កយបត្រ' : 'Receipt style'}
               className="input"
             >
@@ -250,8 +209,8 @@ export function SettingsManager() {
             <div className="relative">
               <input
                 type="checkbox"
-                checked={autoPrintInvoice}
-                onChange={(e) => setAutoPrintInvoice(e.target.checked)}
+                checked={form.autoPrintInvoice}
+                onChange={(e) => setForm((prev) => ({ ...prev, autoPrintInvoice: e.target.checked }))}
                 className="sr-only peer"
               />
               <div className="w-14 h-8 bg-gray-300 rounded-full peer-checked:bg-primary-500 transition-colors"></div>
@@ -279,8 +238,8 @@ export function SettingsManager() {
                   {language === 'km' ? 'ព័ត៌មាន' : 'Info'}
                 </p>
                 <p className="text-sm text-blue-600">
-                  {autoPrintInvoice
-                    ? (receiptPrintMode === 'escpos-intent'
+                  {form.autoPrintInvoice
+                    ? (form.receiptPrintMode === 'escpos-intent'
                         ? (language === 'km'
                             ? 'បន្ទាប់ពីទូទាត់ជោគជ័យ វានឹងបញ្ជូនបង្កាន់ដៃទៅ open-escpos-print-service ដោយស្វ័យប្រវត្តិ។'
                             : 'After successful payment, receipt will be sent to open-escpos-print-service automatically.')
@@ -293,50 +252,30 @@ export function SettingsManager() {
                 </p>
                 <p className="text-xs text-blue-500 mt-2">
                     {language === 'km'
-                      ? `ចម្លង: ${receiptCopies === 2 ? 'ទ្វេដង' : 'តែមួយ'} • រចនាប័ទ្ម: ${receiptStyle}`
-                      : `Copies: ${receiptCopies === 2 ? 'Double' : 'Single'} • Style: ${receiptStyle}`}
+                      ? `ចម្លង: ${form.receiptCopies === 2 ? 'ទ្វេដង' : 'តែមួយ'} • រចនាប័ទ្ម: ${form.receiptStyle}`
+                      : `Copies: ${form.receiptCopies === 2 ? 'Double' : 'Single'} • Style: ${form.receiptStyle}`}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="font-medium text-gray-900">
-                  {language === 'km' ? 'ពិនិត្យម៉ាស៊ីនព្រីន ESC/POS' : 'Check ESC/POS Printer'}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {language === 'km'
-                    ? 'ពិនិត្យភាពរួចរាល់របស់ឧបករណ៍សម្រាប់ open-escpos-print-service'
-                    : 'Verify device readiness for open-escpos-print-service'}
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button variant="outline" onClick={handleCheckPrinter}>
-                  {language === 'km' ? 'ពិនិត្យ' : 'Check'}
-                </Button>
-                <Button variant="primary" onClick={handlePrintTestReceipt} loading={testingPrint}>
-                  {language === 'km' ? 'បោះពុម្ពតេស្ត' : 'Print Test'}
-                </Button>
-              </div>
-            </div>
-            {printerStatus && (
-              <p className="text-sm text-gray-700 mt-3">{printerStatus}</p>
-            )}
-          </div>
+          <PrinterSettingsSection
+            paperSize={form.receiptPaperSize}
+            copies={form.receiptCopies}
+            style={form.receiptStyle}
+          />
         </div>
       </div>
       
       {/* Save Button and Messages */}
       <div className="max-w-xl space-y-4">
-        {error && (
+        {status.error && (
           <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl border border-red-100">
-            {error}
+            {status.error}
           </div>
         )}
         
-        {success && (
+        {status.success && (
           <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl border border-green-100">
             {language === 'km' ? 'ការកំណត់បានរក្សាទុកដោយជោគជ័យ!' : 'Settings saved successfully!'}
           </div>
@@ -345,7 +284,7 @@ export function SettingsManager() {
         <Button
           variant="primary"
           onClick={handleSave}
-          loading={saving}
+          loading={status.saving}
           className="w-full"
         >
           {t(language, 'common.save')}

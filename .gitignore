@@ -29,3 +29,5 @@ Thumbs.db
 *.log
 npm-debug.log*
 public/uploads/*
+.desloppify/
+.dev-tools/bun.lock

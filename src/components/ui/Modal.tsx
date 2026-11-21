@@ -19,6 +19,15 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       document.body.style.overflow = '';
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
   
   if (!isOpen) return null;
   
@@ -30,19 +39,29 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   };
   
   return (
-    <div className="modal-overlay animate-fadeIn" onClick={onClose}>
+    <div className="modal-overlay animate-fadeIn">
+      <button
+        type="button"
+        aria-label="Close modal"
+        className="absolute inset-0 h-full w-full cursor-default"
+        onClick={onClose}
+      />
       <div
-        className={`modal-content ${sizeClasses[size]} animate-slideUp`}
-        onClick={(e) => e.stopPropagation()}
+        className={`modal-content relative ${sizeClasses[size]} animate-slideUp`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title ?? 'Dialog'}
       >
         {title && (
           <div className="flex items-center justify-between p-4 border-b border-gray-100">
             <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
             <button
+              type="button"
               onClick={onClose}
+              aria-label="Close modal"
               className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg aria-hidden="true" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>

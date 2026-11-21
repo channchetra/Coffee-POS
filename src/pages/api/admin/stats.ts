@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getStats, getSessionByToken, getAllUsers } from '../../../lib/db/server';
+import { getStats, getSessionByToken, getAllUsers } from '../../../lib/db';
 
 export const GET: APIRoute = async ({ cookies, url }) => {
   try {

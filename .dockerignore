@@ -55,3 +55,5 @@ coverage
 # Misc
 *.md
 !src/**/*.md
+.desloppify
+.dev-tools

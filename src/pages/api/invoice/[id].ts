@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getInvoiceWithItems, getSessionByToken } from '../../../lib/db/server';
+import { getInvoiceWithItems, getSessionByToken } from '../../../lib/db';
 
 // Public invoice endpoint - requires authentication but not admin role
 // This allows cashiers to view/print invoices they created

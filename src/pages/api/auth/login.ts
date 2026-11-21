@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getUserByUsername, createSession } from '../../../lib/db/server';
+import { getUserByUsername, createSession } from '../../../lib/db';
 import { verifyPassword, generateToken } from '../../../lib/auth/password';
 
 export const POST: APIRoute = async ({ request, cookies }) => {

@@ -6,20 +6,20 @@ import { t } from '../../i18n';
 
 export function ProductGrid() {
   const { products, searchQuery, setSearchQuery, setProducts, getFilteredProducts } = useProductsStore();
-  const { addItem } = useCartStore();
+  const { items, addItem } = useCartStore();
   const { language } = useLanguageStore();
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const res = await fetch('/api/products');
-        if (res.ok) {
-          const data = await res.json();
-          setProducts(data.products);
-          await cacheProducts(data.products);
-        }
+        const res = await fetch('/api/products', { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to load products');
+        const data = await res.json();
+        if (!Array.isArray(data.products)) throw new Error('Invalid products response');
+        setProducts(data.products);
+        await cacheProducts(data.products);
       } catch {
-        // Offline - load from cache
+        // Offline or API failure - always fall back to the cached catalogue.
         const cached = await getCachedProducts();
         setProducts(cached);
       }
@@ -34,6 +34,10 @@ export function ProductGrid() {
 
   const filteredProducts = getFilteredProducts();
   const isFiltering = !!searchQuery;
+  const selectedCounts = items.reduce<Record<string, number>>((counts, item) => {
+    counts[item.productId] = (counts[item.productId] ?? 0) + item.qty;
+    return counts;
+  }, {});
 
   return (
     <div className="flex flex-col h-full">
@@ -60,6 +64,7 @@ export function ProductGrid() {
               <ProductCard
                 key={product.id}
                 product={product}
+                selectedCount={selectedCounts[product.id] ?? 0}
                 onSelect={handleProductSelect}
               />
             ))}

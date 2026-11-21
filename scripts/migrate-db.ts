@@ -65,7 +65,7 @@ if (!tableExists('product_categories')) {
   // Migrate existing products: populate junction table from products.category
   console.log('📝 Migrating existing product categories...');
   const products = db.query('SELECT id, category FROM products').all() as { id: string; category: string }[];
-  const insertStmt = db.prepare('INSERT OR IGNORE INTO product_categories (productId, categorySlug) VALUES (?, ?)');
+  const insertStmt = db.query('INSERT OR IGNORE INTO product_categories (productId, categorySlug) VALUES (?, ?)');
   
   for (const product of products) {
     insertStmt.run(product.id, product.category);

@@ -1,0 +1,58 @@
+# Dev/test stack for Kiri.
+#
+# Production stays on docker-compose.yml (CI/CD ready) and is not modified.
+# This stack runs the Astro dev server with the repo bind-mounted, plus
+# one-shot `desloppify` and `test` services.
+#
+#   kiri compose -f docker-compose.dev.yml up -d
+#   kiri compose -f docker-compose.dev.yml run --rm desloppify scan . --pack js-ts
+#   kiri compose -f docker-compose.dev.yml run --rm test
+#
+# The app is on a Kiri user-defined network, so it gets port publishing and
+# name resolution without relying on the conflicting default bridge.
+name: coffee-pos-dev
+
+x-app: &app
+  image: oven/bun:1.4-alpine
+  working_dir: /app
+  user: "1000:1000"
+  environment:
+    HOME: /tmp
+    BUN_INSTALL_CACHE_DIR: /tmp/bun-cache
+  volumes:
+    - .:/app
+
+services:
+  app:
+    <<: *app
+    container_name: coffee-pos-dev-app
+    restart: unless-stopped
+    command: ["sh", "/app/scripts/dev-entrypoint.sh"]
+    environment:
+      HOME: /tmp
+      BUN_INSTALL_CACHE_DIR: /tmp/bun-cache
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: "4322"
+    ports:
+      - "127.0.0.1:${DEV_PORT:-4322}:4322"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4322/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  desloppify:
+    <<: *app
+    container_name: coffee-pos-dev-desloppify
+    profiles: ["tools"]
+    network_mode: none
+    entrypoint: ["/app/.dev-tools/node_modules/.bin/desloppify"]
+
+  test:
+    <<: *app
+    container_name: coffee-pos-dev-test
+    profiles: ["test"]
+    network_mode: none
+    command: ["sh", "-c", "bunx tsc --noEmit && bun test && bun run build"]

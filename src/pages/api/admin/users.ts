@@ -6,7 +6,7 @@ import {
   updateUser, 
   deleteUser,
   getSessionByToken 
-} from '../../../lib/db/server';
+} from '../../../lib/db';
 import { hashPassword } from '../../../lib/auth/password';
 
 // Middleware to check admin

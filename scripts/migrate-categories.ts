@@ -79,9 +79,6 @@ async function migrateCategories() {
     console.log(`✅ Migrated ${migratedCount} product-category relationships`);
     console.log('🎉 Migration completed successfully!');
     
-  } catch (error) {
-    console.error('❌ Migration failed:', error);
-    throw error;
   } finally {
     db.close();
   }

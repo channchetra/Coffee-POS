@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getAllCategories, getSessionByToken } from '../../lib/db/server';
+import { getAllCategories, getSessionByToken } from '../../lib/db';
 
 // Role-agnostic read endpoint: any authenticated user (cashier or admin) needs
 // the category list for POS tabs. Admin CRUD stays at /api/admin/categories.

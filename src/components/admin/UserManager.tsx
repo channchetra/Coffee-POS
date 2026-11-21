@@ -16,7 +16,7 @@ interface User {
 export function UserManager() {
   const { language } = useLanguageStore();
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<{ loading: boolean; saving: boolean; error: string }>({ loading: true, saving: false, error: '' });
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
@@ -24,8 +24,6 @@ export function UserManager() {
     password: '',
     role: 'cashier' as 'admin' | 'cashier'
   });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
   
   useEffect(() => {
     fetchUsers();
@@ -38,9 +36,9 @@ export function UserManager() {
       const data = await response.json();
       setUsers(data.users);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading users');
+      setStatus((prev) => ({ ...prev, error: err instanceof Error ? err.message : 'Error loading users' }));
     } finally {
-      setLoading(false);
+      setStatus((prev) => ({ ...prev, loading: false }));
     }
   };
   
@@ -83,8 +81,7 @@ export function UserManager() {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
-    setError('');
+    setStatus((prev) => ({ ...prev, saving: true, error: '' }));
     
     try {
       if (editingUser) {
@@ -131,13 +128,13 @@ export function UserManager() {
       
       setShowModal(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error saving user');
+      setStatus((prev) => ({ ...prev, error: err instanceof Error ? err.message : 'Error saving user' }));
     } finally {
-      setSaving(false);
+      setStatus((prev) => ({ ...prev, saving: false }));
     }
   };
   
-  if (loading) {
+  if (status.loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-spin w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full"></div>
@@ -243,9 +240,9 @@ export function UserManager() {
             </select>
           </div>
           
-          {error && (
+          {status.error && (
             <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl">
-              {error}
+              {status.error}
             </div>
           )}
           
@@ -253,7 +250,7 @@ export function UserManager() {
             <Button type="button" variant="secondary" onClick={() => setShowModal(false)} className="flex-1">
               {t(language, 'common.cancel')}
             </Button>
-            <Button type="submit" variant="primary" loading={saving} className="flex-1">
+            <Button type="submit" variant="primary" loading={status.saving} className="flex-1">
               {t(language, 'common.save')}
             </Button>
           </div>

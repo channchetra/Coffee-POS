@@ -6,7 +6,7 @@ import {
   deleteCategory,
   getCategoryBySlug,
   getSessionByToken 
-} from '../../../lib/db/server';
+} from '../../../lib/db';
 
 export const GET: APIRoute = async ({ cookies }) => {
   try {

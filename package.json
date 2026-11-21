@@ -14,7 +14,13 @@
     "docker:build": "docker build -t coffee-pos .",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f"
+    "docker:logs": "docker-compose logs -f",
+    "dev:kiri:setup": "sh scripts/dev-kiri-setup.sh",
+    "dev:kiri": "kiri compose -f docker-compose.dev.yml up -d",
+    "dev:kiri:down": "kiri compose -f docker-compose.dev.yml down",
+    "dev:kiri:logs": "kiri compose -f docker-compose.dev.yml logs -f app",
+    "test:kiri": "kiri compose -f docker-compose.dev.yml run --rm test",
+    "quality:desloppify": "kiri compose -f docker-compose.dev.yml run --rm desloppify scan . --pack js-ts"
   },
   "dependencies": {
     "@astrojs/node": "^9.0.0",

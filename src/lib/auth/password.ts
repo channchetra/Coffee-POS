@@ -19,7 +19,7 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<ArrayBuffe
   return crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
-      salt: salt,
+      salt: salt as BufferSource,
       iterations: ITERATIONS,
       hash: 'SHA-256'
     },
@@ -28,8 +28,8 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<ArrayBuffe
   );
 }
 
-function bufferToHex(buffer: ArrayBuffer): string {
-  return Array.from(new Uint8Array(buffer))
+function bufferToHex(buffer: ArrayBuffer | Uint8Array): string {
+  return Array.from(buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
 }

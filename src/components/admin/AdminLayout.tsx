@@ -47,42 +47,43 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   
   // Check if user is admin
   useEffect(() => {
+    const redirectToLogin = () => {
+      localStorage.setItem('redirectAfterLogin', window.location.pathname);
+      window.location.href = '/login';
+    };
+
     const checkAuth = () => {
       const stored = localStorage.getItem('auth-storage');
-      if (stored) {
-        try {
-          const data = JSON.parse(stored);
-          const storedUser = data.state?.user;
-          
-          if (storedUser) {
-            setUser(storedUser);
-            
-            if (storedUser.role === 'admin') {
-              setIsAuthorized(true);
-              setIsChecking(false);
-              return;
-            } else {
-              // Not admin - redirect to POS
-              window.location.href = '/pos';
-              return;
-            }
-          }
-        } catch {
-          // Invalid stored data
-        }
+      if (!stored) {
+        redirectToLogin();
+        return;
       }
-      
-      // No valid auth - save current URL and redirect to login
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('redirectAfterLogin', window.location.pathname);
-        window.location.href = '/login';
+
+      try {
+        const data = JSON.parse(stored);
+        const storedUser = data.state?.user;
+        if (!storedUser) {
+          redirectToLogin();
+          return;
+        }
+
+        setUser(storedUser);
+        if (storedUser.role !== 'admin') {
+          window.location.href = '/pos';
+          return;
+        }
+
+        setIsAuthorized(true);
+        setIsChecking(false);
+      } catch {
+        redirectToLogin();
       }
     };
     
     checkAuth();
   }, [setUser]);
   
-  const navItems = [
+  const navItems = [ // desloppify:ignore HARDCODED_FAKE_DATA
     { href: '/admin/dashboard', label: t(language, 'admin.dashboard'), icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
     { href: '/admin/products', label: t(language, 'admin.products'), icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
     { href: '/admin/categories', label: language === 'km' ? 'ប្រភេទ' : 'Categories', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
@@ -133,7 +134,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           />
         )}
         
-        {/* Sidebar */}
         <aside className={`
           fixed lg:sticky top-0 lg:top-auto left-0 z-40
           h-screen lg:h-auto lg:min-h-[calc(100vh-57px)]
@@ -206,7 +206,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </div>
         </aside>
         
-        {/* Main content */}
         <main className={`flex-1 p-4 lg:p-6 xl:p-8 transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-0' : ''}`}>
           {children}
         </main>

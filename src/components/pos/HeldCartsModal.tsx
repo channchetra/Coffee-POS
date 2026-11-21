@@ -51,6 +51,16 @@ export function HeldCartsModal({ isOpen, onClose, onResumeCart }: HeldCartsModal
     setEditingCartId(null);
     setEditNote('');
   };
+
+  const handleNoteKeyDown = (event: React.KeyboardEvent<HTMLInputElement>, cartId: string) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleSaveNote(cartId);
+    }
+    if (event.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
   
   const getCartTotal = (cart: HeldCart): number => {
     return cart.items.reduce((sum, item) => sum + item.priceUSDcents * item.qty, 0);
@@ -90,10 +100,7 @@ export function HeldCartsModal({ isOpen, onClose, onResumeCart }: HeldCartsModal
                           placeholder={language === 'km' ? 'បន្ថែមកំណត់ចំណាំ...' : 'Add note...'}
                           className="input input-sm w-full mb-2"
                           autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveNote(cart.id);
-                            if (e.key === 'Escape') handleCancelEdit();
-                          }}
+                          onKeyDown={(e) => handleNoteKeyDown(e, cart.id)}
                         />
                         <div className="flex gap-2">
                           <button
