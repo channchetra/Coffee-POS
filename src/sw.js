@@ -43,23 +43,23 @@ async function toCleanResponse(response) {
   });
 }
 
+async function cacheAsset(cache, url) {
+  try {
+    const response = await fetch(url, { cache: 'reload' });
+    if (!response.ok) return;
+    await cache.put(url, await toCleanResponse(response));
+  } catch {
+    // Keep installing; the page can still load online.
+  }
+}
+
 // Install event - cache static assets. Cache entries individually so one
 // missing/transient asset can never abort the whole service-worker install.
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
-      await Promise.all(
-        STATIC_ASSETS.map(async (url) => {
-          try {
-            const response = await fetch(url, { cache: 'reload' });
-            if (!response.ok) return;
-            await cache.put(url, await toCleanResponse(response));
-          } catch {
-            // Keep installing; the page can still load online.
-          }
-        })
-      );
+      await Promise.all(STATIC_ASSETS.map((url) => cacheAsset(cache, url)));
       await self.skipWaiting();
     })()
   );
