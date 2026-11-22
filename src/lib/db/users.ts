@@ -33,7 +33,26 @@ export function updateUser(id: string, username: string, role: string, passwordH
 
 export function deleteUser(id: string) {
   const db = getDb();
-  db.query('DELETE FROM users WHERE id = ?').run(id);
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const invoiceCount = db.query('SELECT COUNT(*) as count FROM invoices WHERE cashierId = ?').get(id) as { count: number };
+    if (invoiceCount.count > 0) {
+      throw new Error('Cannot delete a user with invoices');
+    }
+
+    // Sessions reference the user, so remove them first; otherwise the FK
+    // constraint makes deletion fail for anyone who has logged in.
+    db.query('DELETE FROM sessions WHERE userId = ?').run(id);
+    db.query('DELETE FROM users WHERE id = ?').run(id);
+    db.exec('COMMIT');
+  } catch (error) {
+    try {
+      db.exec('ROLLBACK');
+    } catch {
+      // Preserve the original error if the transaction already closed.
+    }
+    throw error;
+  }
 }
 
 // Session queries

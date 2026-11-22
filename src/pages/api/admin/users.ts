@@ -168,6 +168,12 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Cannot delete a user with invoices') {
+      return new Response(JSON.stringify({ error: 'Cannot delete a user with invoices. Reassign their invoices first.' }), {
+        status: 409,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
     console.error('Delete user error:', error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
