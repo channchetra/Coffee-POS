@@ -3,7 +3,7 @@
 // /sw.js SSR endpoint with `Cache-Control: no-store` so browsers always check
 // for updates after a deploy. Bump CACHE_NAME on every release that changes
 // cached content.
-const CACHE_NAME = 'coffee-pos-v9';
+const CACHE_NAME = 'coffee-pos-v10';
 const STATIC_ASSETS = [
   '/',
   '/login',
@@ -28,15 +28,40 @@ const STATIC_ASSETS = [
   '/images/products/iced-tea.svg'
 ];
 
-// Install event - cache static assets
+// Cached responses must not carry the browser's `redirected` flag: serving a
+// redirected response to a standalone PWA navigation fails with ERR_FAILED.
+// Rebuild the response from its bytes so the flag is cleared.
+async function toCleanResponse(response) {
+  const body = await response.arrayBuffer();
+  const headers = new Headers(response.headers);
+  headers.delete('content-encoding');
+  headers.delete('content-length');
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+// Install event - cache static assets. Cache entries individually so one
+// missing/transient asset can never abort the whole service-worker install.
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
-      })
-      .then(() => self.skipWaiting())
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      await Promise.all(
+        STATIC_ASSETS.map(async (url) => {
+          try {
+            const response = await fetch(url, { cache: 'reload' });
+            if (!response.ok) return;
+            await cache.put(url, await toCleanResponse(response));
+          } catch {
+            // Keep installing; the page can still load online.
+          }
+        })
+      );
+      await self.skipWaiting();
+    })()
   );
 });
 
@@ -68,7 +93,7 @@ async function putInCache(request, response) {
   if (!response.ok) return;
   try {
     const cache = await caches.open(CACHE_NAME);
-    await cache.put(request, response.clone());
+    await cache.put(request, await toCleanResponse(response.clone()));
   } catch {
     // Caching is best effort; never fail the response because of it.
   }
